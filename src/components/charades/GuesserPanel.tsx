@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Message, Player, PublicHints } from '@/lib/types';
+import { motion, AnimatePresence } from 'framer-motion';
 import EmojiCanvas from '@/components/EmojiCanvas';
 import Chat from '@/components/Chat';
 import GuessInput from '@/components/GuessInput';
@@ -54,13 +55,21 @@ export default function GuesserPanel({
 
   return (
     <div className="relative flex flex-col gap-3">
-      {showFlash && (
-        <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center">
-          <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg">
-            So close!
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showFlash && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0, scale: 0.5, rotateZ: -5 }}
+            animate={{ y: 0, opacity: 1, scale: 1.2, rotateZ: 5 }}
+            exit={{ y: -20, opacity: 0, scale: 0.8, rotateZ: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center"
+          >
+            <div className="rounded-full bg-primary px-6 py-3 text-lg font-bold font-display tracking-widest text-primary-foreground shadow-[4px_4px_0_0_var(--color-border)] border-4 border-border">
+              SO CLOSE!
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <p className="text-center text-muted-foreground">
         {actorNickname ? `${actorNickname} is acting` : 'Waiting for the actor…'}

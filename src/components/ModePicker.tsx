@@ -77,13 +77,13 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
   }
 
   const cardBase =
-    'flex-1 rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed';
-  const cardOn = 'border-[var(--primary)] bg-[var(--primary)]/10';
-  const cardOff = 'border-[var(--border)] bg-[var(--surface)]';
+    'flex-1 rounded-xl border-4 px-4 py-3 text-left transition-all disabled:cursor-not-allowed';
+  const cardOn = 'border-primary bg-primary/10 shadow-[2px_2px_0_0_var(--color-primary)] translate-x-[2px] translate-y-[2px]';
+  const cardOff = 'border-border bg-surface shadow-[6px_6px_0_0_var(--color-border)] hover:bg-surface-muted';
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground font-mono">
         Game mode
       </h2>
 
@@ -99,8 +99,8 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
           aria-pressed={mode === 'classic'}
           className={`${cardBase} ${mode === 'classic' ? cardOn : cardOff}`}
         >
-          <p className="font-semibold">Classic: Emoji Pictionary</p>
-          <p className="text-sm text-[var(--muted-foreground)]">Draw with emojis, everyone guesses.</p>
+          <p className="font-bold font-display tracking-wide text-lg text-primary">Classic</p>
+          <p className="text-xs font-mono text-muted-foreground leading-tight mt-1">Draw with emojis, guess words.</p>
         </button>
         <button
           type="button"
@@ -109,8 +109,8 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
           aria-pressed={mode === 'charades'}
           className={`${cardBase} ${mode === 'charades' ? cardOn : cardOff}`}
         >
-          <p className="font-semibold">Dumb Charades: movies, series and games</p>
-          <p className="text-sm text-[var(--muted-foreground)]">Guess titles from emojis + hints.</p>
+          <p className="font-bold font-display tracking-wide text-lg text-primary">Charades</p>
+          <p className="text-xs font-mono text-muted-foreground leading-tight mt-1">Movies, series, and games.</p>
         </button>
         <button
           type="button"
@@ -119,8 +119,8 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
           aria-pressed={mode === 'relay'}
           className={`${cardBase} ${mode === 'relay' ? cardOn : cardOff}`}
         >
-          <p className="font-semibold">Canvas Relay</p>
-          <p className="text-sm text-[var(--muted-foreground)]">Pass the canvas, guess the chain.</p>
+          <p className="font-bold font-display tracking-wide text-lg text-primary">Relay</p>
+          <p className="text-xs font-mono text-muted-foreground leading-tight mt-1">Pass canvas, guess chain.</p>
         </button>
       </div>
 

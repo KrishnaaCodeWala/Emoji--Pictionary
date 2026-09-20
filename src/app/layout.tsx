@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Special_Elite, Rye } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const specialElite = Special_Elite({
+  weight: "400",
+  variable: "--font-special-elite",
+  subsets: ["latin"],
+});
+
+const rye = Rye({
+  weight: "400",
+  variable: "--font-rye",
   subsets: ["latin"],
 });
 
@@ -29,9 +36,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${specialElite.variable} ${rye.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans transition-colors duration-500">
         <div className="flex-1">{children}</div>
         <footer className="gutter py-3 text-center text-[11px] text-muted-foreground">
           Posters and cover art via{' '}

@@ -2,6 +2,7 @@
 
 import type { HintKey, Prompt } from '@/lib/types';
 import { HINT_COST, HINT_KEYS } from '@/lib/constants';
+import { motion } from 'framer-motion';
 import EmojiCanvas from '@/components/EmojiCanvas';
 import EmojiPicker from '@/components/EmojiPicker';
 import PosterFrame from './PosterFrame';
@@ -44,21 +45,21 @@ export default function ActorPanel({ prompt, canvas, revealed, onDraw, onRevealH
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-      <div className="flex items-center gap-3">
-        <PosterFrame url={prompt.poster_url} title={prompt.title} className="w-20 shrink-0" />
+    <div className="flex flex-col gap-3 rounded-xl border-4 border-border shadow-[8px_8px_0_0_var(--color-border)] bg-surface p-4">
+      <div className="flex items-center gap-4">
+        <PosterFrame url={prompt.poster_url} title={prompt.title} className="w-20 shrink-0 border-2 border-border shadow-[2px_2px_0_0_var(--color-border)]" />
         <div className="flex flex-1 flex-col gap-1">
-          <span className="inline-flex w-fit items-center rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-medium text-foreground">
+          <span className="inline-flex w-fit items-center rounded-full border-2 border-border bg-surface-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-foreground font-mono">
             {KIND_LABEL[prompt.kind]}
           </span>
-          <h2 className="text-lg font-bold text-foreground">{prompt.title}</h2>
-          <p className="text-xs text-muted-foreground">
+          <h2 className="text-xl font-bold text-primary font-display tracking-widest">{prompt.title}</h2>
+          <p className="text-xs text-muted-foreground font-mono font-bold">
             {[prompt.year ?? undefined, prompt.genres.join(', ') || undefined].filter(Boolean).join(' · ')}
           </p>
         </div>
       </div>
 
-      <p className="text-sm font-medium text-primary">Act it out with emojis!</p>
+      <p className="text-sm font-bold font-mono text-primary uppercase tracking-widest text-center mt-2 border-y-2 border-dashed border-border py-2">Act it out with emojis!</p>
 
       <EmojiCanvas emojis={canvas} />
       <EmojiPicker value={canvas} onChange={onDraw} />
@@ -67,21 +68,23 @@ export default function ActorPanel({ prompt, canvas, revealed, onDraw, onRevealH
         {HINT_KEYS.map((key) => {
           const isRevealed = revealed.includes(key);
           return (
-            <button
+            <motion.button
+              whileHover={!isRevealed ? { scale: 1.05 } : {}}
+              whileTap={!isRevealed ? { scale: 0.95 } : {}}
               key={key}
               type="button"
               disabled={isRevealed}
               onClick={() => onRevealHint(key)}
-              className="min-h-10 flex-1 rounded-lg border border-border bg-surface-muted px-3 py-2 text-xs font-medium text-foreground hover:bg-border disabled:opacity-50"
+              className="min-h-10 flex-1 rounded-lg border-2 border-border bg-surface px-3 py-2 text-xs font-mono font-bold text-foreground hover:bg-surface-muted disabled:opacity-50 disabled:bg-surface-muted shadow-[2px_2px_0_0_var(--color-border)] disabled:shadow-[0px_0px_0_0_var(--color-border)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
             >
               {isRevealed ? (
-                <span>{HINT_LABEL[key]}: Revealed</span>
+                <span className="line-through">{HINT_LABEL[key]} Revealed</span>
               ) : (
                 <span>
-                  {HINT_LABEL[key]} <span className="text-danger">-{HINT_COST} pts</span>
+                  {HINT_LABEL[key]} <span className="text-danger ml-1 px-1 bg-danger-bg rounded-md">-{HINT_COST} pts</span>
                 </span>
               )}
-            </button>
+            </motion.button>
           );
         })}
       </div>

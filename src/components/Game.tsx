@@ -19,6 +19,7 @@ import GuessPanel from './relay/GuessPanel';
 import WaitingPanel from './relay/WaitingPanel';
 import AlbumViewer from './relay/AlbumViewer';
 import ProgressPill from './relay/ProgressPill';
+import { ModeTransition } from './transitions/ModeTransition';
 
 /** "{word} at a wedding" style random writing prompts for the relay "Inspire me" button. */
 const RELAY_INSPIRE_TEMPLATES = [
@@ -124,32 +125,71 @@ export default function Game({
     }
 
     return (
-      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-lg font-bold">
-            {phase === 'album' ? 'Album' : `Step ${room.relay_step + 1} of ${players.length} · ${RELAY_PHASE_LABELS[phase]}`}
-          </h1>
-          {phase !== 'album' && <Timer endsAt={room.round_end_time} onExpire={onRelayExpire ?? noop} />}
+      <ModeTransition mode="relay">
+        <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-lg font-bold font-display tracking-wide">
+              {phase === 'album' ? 'Album' : `Step ${room.relay_step + 1} of ${players.length} · ${RELAY_PHASE_LABELS[phase]}`}
+            </h1>
+            {phase !== 'album' && <Timer endsAt={room.round_end_time} onExpire={onRelayExpire ?? noop} />}
+          </div>
+
+          <ProgressPill progress={relay.progress} />
+
+          {relay.error && (
+            <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger" role="alert">
+              {relay.error}
+            </p>
+          )}
+
+          {body}
         </div>
-
-        <ProgressPill progress={relay.progress} />
-
-        {relay.error && (
-          <p className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]" role="alert">
-            {relay.error}
-          </p>
-        )}
-
-        {body}
-      </div>
+      </ModeTransition>
     );
   }
 
   if (room.mode === 'charades') {
     return (
-      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
-        <RevealCard reveal={reveal ?? null} />
+      <ModeTransition mode="charades">
+        <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+          <RevealCard reveal={reveal ?? null} />
 
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-lg font-bold font-display tracking-wide">
+              Round {room.round_number} of {totalRounds}
+            </h1>
+            <Timer endsAt={room.round_end_time} onExpire={onExpire} />
+          </div>
+
+          <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
+
+          {isDrawer ? (
+            <ActorPanel
+              prompt={prompt ?? null}
+              canvas={canvas}
+              revealed={room.revealed_hints ?? []}
+              onDraw={onDraw}
+              onRevealHint={onRevealHint ?? noop}
+            />
+          ) : (
+            <GuesserPanel
+              canvas={canvas}
+              hints={hints ?? null}
+              messages={messages}
+              players={players}
+              actorNickname={drawer?.nickname ?? null}
+              onGuess={onGuess}
+              closeFlash={closeFlash ?? 0}
+            />
+          )}
+        </div>
+      </ModeTransition>
+    );
+  }
+
+  return (
+    <ModeTransition mode="classic">
+      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6 theme-modern font-sans">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-bold">
             Round {room.round_number} of {totalRounds}
@@ -160,69 +200,36 @@ export default function Game({
         <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
 
         {isDrawer ? (
-          <ActorPanel
-            prompt={prompt ?? null}
-            canvas={canvas}
-            revealed={room.revealed_hints ?? []}
-            onDraw={onDraw}
-            onRevealHint={onRevealHint ?? noop}
-          />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <div className="flex flex-col gap-3">
+              <div className="rounded-xl border border-primary bg-primary/10 px-4 py-3 text-center shadow-sm">
+                <p className="text-sm text-muted-foreground">Draw:</p>
+                <p className="text-2xl font-bold text-primary">{word ?? '…'}</p>
+              </div>
+              <EmojiCanvas emojis={canvas} />
+            </div>
+            <div className="flex flex-col gap-3">
+              <EmojiPicker value={canvas} onChange={onDraw} />
+              <Chat messages={messages} players={players} />
+            </div>
+          </div>
         ) : (
-          <GuesserPanel
-            canvas={canvas}
-            hints={hints ?? null}
-            messages={messages}
-            players={players}
-            actorNickname={drawer?.nickname ?? null}
-            onGuess={onGuess}
-            closeFlash={closeFlash ?? 0}
-          />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <div className="flex flex-col gap-3">
+              <p className="text-center text-muted-foreground">
+                {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
+              </p>
+              <EmojiCanvas emojis={canvas} />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Chat messages={messages} players={players} />
+              <div className="sticky bottom-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+                <GuessInput onSubmit={onGuess} />
+              </div>
+            </div>
+          </div>
         )}
       </div>
-    );
-  }
-
-  return (
-    <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold">
-          Round {room.round_number} of {totalRounds}
-        </h1>
-        <Timer endsAt={room.round_end_time} onExpire={onExpire} />
-      </div>
-
-      <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
-
-      {isDrawer ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-          <div className="flex flex-col gap-3">
-            <div className="rounded-xl border border-[var(--primary)] bg-[var(--primary)]/10 px-4 py-3 text-center">
-              <p className="text-sm text-[var(--muted-foreground)]">Draw:</p>
-              <p className="text-2xl font-bold text-[var(--primary)]">{word ?? '…'}</p>
-            </div>
-            <EmojiCanvas emojis={canvas} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <EmojiPicker value={canvas} onChange={onDraw} />
-            <Chat messages={messages} players={players} />
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-          <div className="flex flex-col gap-3">
-            <p className="text-center text-[var(--muted-foreground)]">
-              {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
-            </p>
-            <EmojiCanvas emojis={canvas} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <Chat messages={messages} players={players} />
-            <div className="sticky bottom-0 z-10 -mx-4 bg-[var(--background)]/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-              <GuessInput onSubmit={onGuess} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </ModeTransition>
   );
 }

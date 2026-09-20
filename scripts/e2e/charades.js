@@ -27,7 +27,7 @@ const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1; };
   await host.getByText('Players (2)').waitFor({ timeout: 15000 });
 
   // Host picks charades, movies only
-  await host.getByRole('button', { name: /Dumb Charades/ }).click();
+  await host.getByRole('button', { name: /^Charades/ }).click();
   await host.waitForTimeout(800);
   // turn off Series and Games (leave Movies)
   for (const k of ['Series', 'Games']) {
@@ -36,7 +36,7 @@ const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1; };
     await host.waitForTimeout(400);
   }
   // Guest sees charades selected read-only
-  await guest.locator('button[aria-pressed="true"]', { hasText: 'Dumb Charades' }).waitFor({ timeout: 12000 });
+  await guest.locator('button[aria-pressed="true"]', { hasText: /^Charades/ }).waitFor({ timeout: 12000 });
   log('guest sees charades selected (mode sync OK)');
   await host.screenshot({ path: `${SHOT}/c1-lobby-modepicker.png` });
 
@@ -74,7 +74,7 @@ const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1; };
   await actor.getByRole('button', { name: /^Year/ }).click();
   await guesser.getByText(/^(19|20)\d\d$/).first().waitFor({ timeout: 10000 });
   log('guesser sees year hint');
-  await actor.getByText(/Year: Revealed/).waitFor({ timeout: 10000 });
+  await actor.getByText(/Year:? Revealed/).waitFor({ timeout: 10000 });
   log('actor sees hint as revealed');
 
   // Fuzzy near miss -> "So close!" private toast

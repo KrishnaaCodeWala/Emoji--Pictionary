@@ -11,6 +11,8 @@ import type { GameMode, HintKey, Player, RoomSettings, WordRes } from '@/lib/typ
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
 import Results from '@/components/Results';
+import { AnimatePresence, motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
@@ -230,57 +232,93 @@ export default function RoomClient({ code }: { code: string }) {
     );
   }
 
+  const isModern = room.mode === 'classic' && room.status !== 'lobby';
+
   return (
-    <div>
+    <div className={cn("min-h-screen transition-colors duration-500 relative", isModern ? "theme-modern bg-background text-foreground" : "")}>
+      {!isModern && (
+        <>
+          <div className="vintage-noise" />
+          <div className="vintage-vignette" />
+        </>
+      )}
+
       {actionError && room.status !== 'lobby' && (
-        <div role="alert" className="gutter mt-3 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-2 text-sm text-red-600 dark:text-red-300">
+        <div role="alert" className="gutter relative z-10 mt-3 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-2 text-sm text-red-600">
           {actionError}
         </div>
       )}
-      {room.status === 'lobby' && (
-        <Lobby
-          room={optimisticMode ? { ...room, mode: optimisticMode.mode, settings: optimisticMode.settings } : room}
-          players={players}
-          me={me}
-          isHost={isHost}
-          onlineIds={onlineIds}
-          onStart={handleStart}
-          starting={starting}
-          error={actionError}
-          onSetMode={handleSetMode}
-        />
-      )}
-      {room.status === 'playing' && (
-        <Game
-          room={room}
-          players={players}
-          me={me}
-          isDrawer={isDrawer}
-          canvas={canvas}
-          messages={messages}
-          word={isDrawer ? wordRes?.word ?? null : null}
-          onDraw={handleDraw}
-          onGuess={handleGuess}
-          onExpire={handleExpire}
-          prompt={isDrawer ? wordRes?.prompt ?? null : null}
-          hints={hints}
-          reveal={reveal}
-          closeFlash={closeFlash}
-          onRevealHint={handleRevealHint}
-          relay={room.mode === 'relay' ? relay : undefined}
-          onRelayExpire={room.mode === 'relay' ? handleRelayExpire : undefined}
-        />
-      )}
-      {room.status === 'finished' && (
-        <Results
-          players={players}
-          isHost={isHost}
-          onPlayAgain={handlePlayAgain}
-          mode={room.mode}
-          reveals={reveals}
-          chains={chains}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {room.status === 'lobby' && (
+          <motion.div
+            key="lobby"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.3 }}
+            className="relative z-10"
+          >
+            <Lobby
+              room={optimisticMode ? { ...room, mode: optimisticMode.mode, settings: optimisticMode.settings } : room}
+              players={players}
+              me={me}
+              isHost={isHost}
+              onlineIds={onlineIds}
+              onStart={handleStart}
+              starting={starting}
+              error={actionError}
+              onSetMode={handleSetMode}
+            />
+          </motion.div>
+        )}
+        {room.status === 'playing' && (
+          <motion.div
+            key="playing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="relative z-10"
+          >
+            <Game
+              room={room}
+              players={players}
+              me={me}
+              isDrawer={isDrawer}
+              canvas={canvas}
+              messages={messages}
+              word={isDrawer ? wordRes?.word ?? null : null}
+              onDraw={handleDraw}
+              onGuess={handleGuess}
+              onExpire={handleExpire}
+              prompt={isDrawer ? wordRes?.prompt ?? null : null}
+              hints={hints}
+              reveal={reveal}
+              closeFlash={closeFlash}
+              onRevealHint={handleRevealHint}
+              relay={room.mode === 'relay' ? relay : undefined}
+              onRelayExpire={room.mode === 'relay' ? handleRelayExpire : undefined}
+            />
+          </motion.div>
+        )}
+        {room.status === 'finished' && (
+          <motion.div
+            key="finished"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="relative z-10"
+          >
+            <Results
+              players={players}
+              isHost={isHost}
+              onPlayAgain={handlePlayAgain}
+              mode={room.mode}
+              reveals={reveals}
+              chains={chains}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

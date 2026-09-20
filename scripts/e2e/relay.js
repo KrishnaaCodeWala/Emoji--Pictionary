@@ -24,11 +24,11 @@ const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1; };
   await Host.getByText('Players (3)').waitFor({ timeout: 15000 });
 
   // Pick relay + quick timers
-  await Host.getByRole('button', { name: /Canvas Relay/ }).click();
+  await Host.getByRole('button', { name: /^Relay/ }).click();
   await Host.waitForTimeout(600);
   const quick = Host.getByRole('button', { name: 'Quick', exact: true });
   if (await quick.count()) await quick.click();
-  await Bea.locator('button[aria-pressed="true"]', { hasText: 'Canvas Relay' }).waitFor({ timeout: 12000 });
+  await Bea.locator('button[aria-pressed="true"]', { hasText: /^Relay/ }).waitFor({ timeout: 12000 });
   log('mode synced to others');
   await Host.screenshot({ path: `${SHOT}/r1-lobby.png` });
 

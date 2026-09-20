@@ -4,6 +4,8 @@ import { MIN_PLAYERS, RELAY_MIN_PLAYERS_HINT } from '@/lib/constants';
 import RoomCodeBadge from './RoomCodeBadge';
 import PlayerList from './PlayerList';
 import ModePicker from './ModePicker';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export interface LobbyProps {
   room: RoomPublic; players: Player[]; me: Player | null; isHost: boolean;
@@ -19,10 +21,11 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
 
   return (
     <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Lobby</h1>
-        <p className="text-[var(--muted-foreground)]">Share the code and wait for everyone to join.</p>
-      </div>
+      <Card vintage={true} className="flex flex-col gap-6">
+        <div className="text-center font-display">
+          <h1 className="text-3xl font-bold tracking-widest text-primary">LOBBY</h1>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Gather your crew.</p>
+        </div>
 
       <RoomCodeBadge code={room.room_code} />
 
@@ -50,22 +53,23 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
       )}
 
       {isHost ? (
-        <div className="flex flex-col items-center gap-1">
-          <button
-            type="button"
+        <div className="flex flex-col items-center gap-2">
+          <Button
             onClick={onStart}
             disabled={!canStart || !!starting}
-            className="w-full rounded-full bg-[var(--primary)] px-4 py-3 font-semibold text-[var(--primary-foreground)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+            size="lg"
+            className="w-full text-xl uppercase tracking-wider font-display"
           >
             {starting ? 'Starting…' : 'Start game'}
-          </button>
+          </Button>
           {!canStart && (
             <p className="text-sm text-[var(--muted-foreground)]">Need at least 2 players</p>
           )}
         </div>
       ) : (
-        <p className="text-center text-sm text-[var(--muted-foreground)]">Waiting for host to start</p>
+        <p className="text-center text-sm text-[var(--muted-foreground)] font-mono">Waiting for host to start...</p>
       )}
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,6 @@
-'use client';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Copy, Check } from 'lucide-react';
 
 export interface RoomCodeBadgeProps { code: string }
 
@@ -17,18 +18,20 @@ export default function RoomCodeBadge({ code }: RoomCodeBadgeProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-xl border-4 border-border shadow-[6px_6px_0_0_var(--color-border)] bg-surface px-4 py-3">
       <div>
-        <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Room code</p>
-        <p className="text-3xl font-bold tracking-[0.3em] text-[var(--primary)]">{code}</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Room code</p>
+        <p className="text-4xl font-bold tracking-[0.3em] text-primary font-display pt-1">{code}</p>
       </div>
-      <button
+      <Button
         type="button"
         onClick={handleCopy}
-        className="ml-auto rounded-full bg-[var(--surface-muted)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--border)]"
+        variant="outline"
+        className="ml-auto"
       >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
+        {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+        {copied ? 'Copied' : 'Copy'}
+      </Button>
     </div>
   );
 }

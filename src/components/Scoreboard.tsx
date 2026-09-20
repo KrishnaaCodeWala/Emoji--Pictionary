@@ -12,10 +12,10 @@ export default function Scoreboard({ players, currentDrawerId, meId }: Scoreboar
         return (
           <div
             key={p.id}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${
+            className={`flex items-center gap-1.5 rounded-xl border-2 px-3 py-1 text-sm font-mono font-bold shadow-[2px_2px_0_0_var(--color-border)] ${
               isDrawer
-                ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-semibold'
-                : 'border-[var(--border)] bg-[var(--surface)]'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-surface'
             }`}
           >
             {isDrawer && <span aria-hidden>✏️</span>}
