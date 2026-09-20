@@ -1,5 +1,5 @@
 import { jsonOk, jsonError, HttpError, handleApiError } from '@/lib/http';
-import { getRoomByCode, startNextTurn } from '@/lib/game';
+import { getRoomByCode, startNextTurn, resolveRoundReveal } from '@/lib/game';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { AdvanceReq, OkRes } from '@/lib/types';
 
@@ -55,6 +55,8 @@ export async function POST(req: Request) {
       // Someone else already advanced this round; treat as a success (idempotent no-op).
       return jsonOk<OkRes>({ ok: true });
     }
+
+    await resolveRoundReveal(room.id, null);
 
     const { error: msgError } = await admin.from('messages').insert({
       room_id: room.id,

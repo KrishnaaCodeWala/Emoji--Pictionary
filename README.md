@@ -48,6 +48,29 @@ nickname and a 4-character room code.
 
    Open [http://localhost:3000](http://localhost:3000).
 
+## Game modes
+
+The lobby host picks a mode before starting (editable in the lobby, read-only summary for
+everyone else):
+
+- **Classic (Emoji Pictionary)**: the original mode. One player draws a secret word using only
+  emojis; everyone else races to guess it in chat.
+- **Dumb Charades**: guess movies, series, or games from emojis. The host toggles which
+  categories are in play (at least one stays on) and how many rounds per player. The actor can
+  reveal hints (year, genre, word count, first letters) at the cost of some guesser points; once
+  a round resolves, a poster + title + year reveal is shown to everyone before the next round.
+
+To enable Dumb Charades on a fresh project:
+
+1. Run `supabase/migrations/002_charades.sql` in the Supabase SQL editor (adds `mode`/`settings`
+   to `rooms`, the `prompts` table, and updates the `rooms_public` view).
+2. Seed the prompt catalog: `npm run seed:prompts`. This upserts `data/catalog.seed.json`
+   (~500 movies/series/games) into the `prompts` table via the service-role key.
+
+The seed catalog is a static, hand-curated list. To later import a live catalog from TMDB
+(movies/series) or RAWG (games) instead, see the "Later: replacing the seed with real
+catalogs" section of `BUILD_PLAN_V2.md`.
+
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and import it in [Vercel](https://vercel.com/new).

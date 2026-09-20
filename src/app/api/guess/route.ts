@@ -1,5 +1,7 @@
 import { jsonOk, jsonError, handleApiError, HttpError } from '@/lib/http';
 import { getRoomByCode, awardAndAdvance } from '@/lib/game';
+import { getPromptById } from '@/lib/prompts';
+import { matchGuess } from '@/lib/matching';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/rateLimit';
 import type { GuessReq, GuessRes } from '@/lib/types';
@@ -58,9 +60,19 @@ export async function POST(req: Request) {
       throw new HttpError(400, 'Guess must be between 1 and 60 characters');
     }
 
-    const normalizedWord = room.current_word ? normalize(room.current_word) : '';
+    let aliases: string[] = [];
+    if (room.mode === 'charades' && room.current_prompt_id) {
+      const prompt = await getPromptById(room.current_prompt_id);
+      aliases = prompt?.aliases ?? [];
+    }
 
-    if (normalizedGuess !== normalizedWord) {
+    const matchResult = matchGuess(trimmed, room.current_word ?? '', aliases);
+
+    if (matchResult === 'close') {
+      return jsonOk<GuessRes>({ correct: false, close: true });
+    }
+
+    if (matchResult === 'miss') {
       const { error: insertErr } = await admin.from('messages').insert({
         room_id: room.id,
         player_id: playerId,

@@ -38,9 +38,10 @@ async function getJson<TRes>(url: string): Promise<TRes> {
 }
 
 export const api = {
-  // TODO (Track B): v2
-  setMode: (_b: SetModeReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
-  revealHint: (_b: RevealHintReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
+  setMode: (b: SetModeReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/mode', b),
+  revealHint: (b: RevealHintReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/hint', b),
   createRoom: (b: CreateRoomReq): Promise<CreateRoomRes> =>
     postJson<CreateRoomRes>('/api/rooms/create', b),
   joinRoom: (b: JoinRoomReq): Promise<JoinRoomRes> =>

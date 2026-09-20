@@ -1,9 +1,21 @@
 import 'server-only';
 import { getSupabaseAdmin } from './supabase/admin';
 import { HttpError } from './http';
-import type { RoomRow, Player } from './types';
-import { ROUNDS_PER_PLAYER, ROUND_SECONDS, POINTS_GUESSER, POINTS_DRAWER } from './constants';
-import { pickWord } from './words';
+import type { RoomRow, Player, RoomSettings } from './types';
+import {
+  ROUNDS_PER_PLAYER,
+  ROUND_SECONDS,
+  POINTS_GUESSER,
+  POINTS_DRAWER,
+  HINT_COST,
+  MIN_GUESSER_POINTS,
+  SPEED_BONUS_POINTS,
+  SPEED_BONUS_WINDOW_S,
+} from './constants';
+import { pickPrompt, getPromptById } from './prompts';
+import { SYS_REVEAL_PREFIX, SYS_HINTS_PREFIX } from './constants';
+import { publicHints } from './prompts';
+import type { RevealPayload } from './types';
 
 /** Full room row (incl. current_word). Throws HttpError(404) if missing. */
 export async function getRoomByCode(code: string): Promise<RoomRow> {
@@ -14,6 +26,14 @@ export async function getRoomByCode(code: string): Promise<RoomRow> {
     .eq('room_code', code)
     .maybeSingle();
 
+  if (error) throw new HttpError(500, error.message);
+  if (!data) throw new HttpError(404, 'Room not found');
+  return data as RoomRow;
+}
+
+async function getRoomById(roomId: string): Promise<RoomRow> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from('rooms').select('*').eq('id', roomId).maybeSingle();
   if (error) throw new HttpError(500, error.message);
   if (!data) throw new HttpError(404, 'Room not found');
   return data as RoomRow;
@@ -43,28 +63,19 @@ async function insertSystemMessage(roomId: string, content: string) {
 }
 
 /**
- * Rotate drawer, pick word, bump round, or finish the game.
- * TODO (Track A, v2): use pickPrompt() from ./prompts for both modes, store current_prompt_id,
- * reset revealed_hints, set round_started_at, and push the prompt id into settings.usedPromptIds.
+ * Rotate drawer, pick prompt (classic word or charades prompt), bump round, or finish the game.
  */
 export async function startNextTurn(roomId: string): Promise<void> {
   const admin = getSupabaseAdmin();
 
-  const [room, players] = await Promise.all([
-    (async () => {
-      const { data, error } = await admin.from('rooms').select('*').eq('id', roomId).maybeSingle();
-      if (error) throw new HttpError(500, error.message);
-      if (!data) throw new HttpError(404, 'Room not found');
-      return data as RoomRow;
-    })(),
-    getPlayersOrdered(roomId),
-  ]);
+  const [room, players] = await Promise.all([getRoomById(roomId), getPlayersOrdered(roomId)]);
 
   if (players.length === 0) {
     throw new HttpError(400, 'No players in room');
   }
 
-  const totalRounds = players.length * ROUNDS_PER_PLAYER;
+  const roundsPerPlayer = room.settings?.rounds ?? ROUNDS_PER_PLAYER;
+  const totalRounds = players.length * roundsPerPlayer;
 
   if (room.round_number >= totalRounds) {
     const { error } = await admin
@@ -73,6 +84,7 @@ export async function startNextTurn(roomId: string): Promise<void> {
         status: 'finished',
         current_drawer_id: null,
         current_word: null,
+        current_prompt_id: null,
         round_end_time: null,
       })
       .eq('id', roomId);
@@ -82,18 +94,28 @@ export async function startNextTurn(roomId: string): Promise<void> {
   }
 
   const nextDrawer = players[room.round_number % players.length];
-  const nextWord = pickWord(room.current_word);
+  const { answer, promptId } = await pickPrompt(room);
   const nextRoundNumber = room.round_number + 1;
   const roundEndTime = new Date(Date.now() + ROUND_SECONDS * 1000).toISOString();
+  const roundStartedAt = new Date().toISOString();
+
+  const nextSettings: RoomSettings = { ...room.settings };
+  if (promptId) {
+    nextSettings.usedPromptIds = [...(room.settings?.usedPromptIds ?? []), promptId];
+  }
 
   const { error } = await admin
     .from('rooms')
     .update({
       status: 'playing',
       current_drawer_id: nextDrawer.id,
-      current_word: nextWord,
+      current_word: answer,
+      current_prompt_id: promptId,
+      revealed_hints: [],
+      round_started_at: roundStartedAt,
       round_number: nextRoundNumber,
       round_end_time: roundEndTime,
+      settings: nextSettings,
     })
     .eq('id', roomId);
   if (error) throw new HttpError(500, error.message);
@@ -102,14 +124,41 @@ export async function startNextTurn(roomId: string): Promise<void> {
     roomId,
     `Round ${nextRoundNumber} — ${nextDrawer.nickname} is drawing`,
   );
+
+  // Charades: guessers see the category from the start.
+  if (room.mode === 'charades' && promptId) {
+    const prompt = await getPromptById(promptId);
+    if (prompt) {
+      await insertSystemMessage(
+        roomId,
+        SYS_HINTS_PREFIX + JSON.stringify({ ...publicHints(prompt, []), roundNumber: nextRoundNumber }),
+      );
+    }
+  }
 }
 
 /**
- * TODO (Track A, v2): resolve the round for charades (correct guess or timeout): insert the
- * 'reveal:' system message (RevealPayload) before startNextTurn. Scoring per BUILD_PLAN_V2.
+ * Resolve the round for charades (correct guess or timeout): insert the 'reveal:' system
+ * message (RevealPayload) before the round-summary message and before startNextTurn.
+ * No-op in classic mode.
  */
-export async function resolveRoundReveal(_roomId: string, _guesserNickname: string | null): Promise<void> {
-  // no-op until Track A implements it
+export async function resolveRoundReveal(roomId: string, guesserNickname: string | null): Promise<void> {
+  const room = await getRoomById(roomId);
+  if (room.mode !== 'charades' || !room.current_prompt_id) return;
+
+  const prompt = await getPromptById(room.current_prompt_id);
+  if (!prompt) return;
+
+  const payload: RevealPayload = {
+    title: prompt.title,
+    year: prompt.year,
+    kind: prompt.kind,
+    poster_url: prompt.poster_url,
+    guesserNickname,
+    roundNumber: room.round_number,
+  };
+
+  await insertSystemMessage(roomId, SYS_REVEAL_PREFIX + JSON.stringify(payload));
 }
 
 /**
@@ -148,10 +197,25 @@ export async function awardAndAdvance(
   const guesser = players.find((p) => p.id === guesserId);
   const drawer = drawerId ? players.find((p) => p.id === drawerId) : undefined;
 
+  let guesserPoints = POINTS_GUESSER;
+  let drawerPoints = POINTS_DRAWER;
+
+  if (room.mode === 'charades') {
+    const revealedCount = room.revealed_hints?.length ?? 0;
+    guesserPoints = Math.max(MIN_GUESSER_POINTS, POINTS_GUESSER - HINT_COST * revealedCount);
+    if (room.round_started_at) {
+      const elapsedS = (Date.now() - new Date(room.round_started_at).getTime()) / 1000;
+      if (elapsedS <= SPEED_BONUS_WINDOW_S) {
+        guesserPoints += SPEED_BONUS_POINTS;
+      }
+    }
+    drawerPoints = POINTS_DRAWER;
+  }
+
   if (guesser) {
     const { error } = await admin
       .from('players')
-      .update({ score: guesser.score + POINTS_GUESSER })
+      .update({ score: guesser.score + guesserPoints })
       .eq('id', guesser.id);
     if (error) throw new HttpError(500, error.message);
   }
@@ -159,10 +223,12 @@ export async function awardAndAdvance(
   if (drawer) {
     const { error } = await admin
       .from('players')
-      .update({ score: drawer.score + POINTS_DRAWER })
+      .update({ score: drawer.score + drawerPoints })
       .eq('id', drawer.id);
     if (error) throw new HttpError(500, error.message);
   }
+
+  await resolveRoundReveal(roomId, guesser ? guesser.nickname : null);
 
   await insertSystemMessage(
     roomId,

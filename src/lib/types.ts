@@ -49,6 +49,8 @@ export interface Prompt {
 /** Hints visible to guessers, computed server-side from revealed_hints. */
 export interface PublicHints {
   kind: PromptKind;
+  /** Round these hints belong to; clients ignore hints from other rounds. */
+  roundNumber?: number;
   year?: number;
   genre?: string;
   wordCount?: number;

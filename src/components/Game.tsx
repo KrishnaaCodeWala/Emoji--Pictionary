@@ -1,11 +1,15 @@
 'use client';
 import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+import { ROUNDS_PER_PLAYER } from '@/lib/constants';
 import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
 import EmojiPicker from '../components/EmojiPicker';
 import EmojiCanvas from '../components/EmojiCanvas';
 import Chat from '../components/Chat';
 import GuessInput from '../components/GuessInput';
+import ActorPanel from './charades/ActorPanel';
+import GuesserPanel from './charades/GuesserPanel';
+import RevealCard from './charades/RevealCard';
 
 export interface GameProps {
   room: RoomPublic; players: Player[]; me: Player | null; isDrawer: boolean;
@@ -25,15 +29,58 @@ export interface GameProps {
   onRevealHint?: (hint: HintKey) => void;
 }
 
+const noop = () => {};
+
 export default function Game({
   room, players, me, isDrawer, canvas, messages, word, onDraw, onGuess, onExpire,
+  prompt, hints, reveal, closeFlash, onRevealHint,
 }: GameProps) {
   const drawer = players.find((p) => p.id === room.current_drawer_id) ?? null;
+  const totalRounds = players.length * (room.settings?.rounds ?? ROUNDS_PER_PLAYER);
+
+  if (room.mode === 'charades') {
+    return (
+      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+        <RevealCard reveal={reveal ?? null} />
+
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-bold">
+            Round {room.round_number} of {totalRounds}
+          </h1>
+          <Timer endsAt={room.round_end_time} onExpire={onExpire} />
+        </div>
+
+        <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
+
+        {isDrawer ? (
+          <ActorPanel
+            prompt={prompt ?? null}
+            canvas={canvas}
+            revealed={room.revealed_hints ?? []}
+            onDraw={onDraw}
+            onRevealHint={onRevealHint ?? noop}
+          />
+        ) : (
+          <GuesserPanel
+            canvas={canvas}
+            hints={hints ?? null}
+            messages={messages}
+            players={players}
+            actorNickname={drawer?.nickname ?? null}
+            onGuess={onGuess}
+            closeFlash={closeFlash ?? 0}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold">Round {room.round_number}</h1>
+        <h1 className="text-lg font-bold">
+          Round {room.round_number} of {totalRounds}
+        </h1>
         <Timer endsAt={room.round_end_time} onExpire={onExpire} />
       </div>
 

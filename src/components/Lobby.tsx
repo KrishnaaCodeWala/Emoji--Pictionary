@@ -3,6 +3,7 @@ import type { GameMode, Player, RoomPublic, RoomSettings } from '@/lib/types';
 import { MIN_PLAYERS } from '@/lib/constants';
 import RoomCodeBadge from './RoomCodeBadge';
 import PlayerList from './PlayerList';
+import ModePicker from './ModePicker';
 
 export interface LobbyProps {
   room: RoomPublic; players: Player[]; me: Player | null; isHost: boolean;
@@ -11,8 +12,10 @@ export interface LobbyProps {
   onSetMode?: (mode: GameMode, settings: RoomSettings) => void;
 }
 
-export default function Lobby({ room, players, me, isHost, onlineIds, onStart, starting, error }: LobbyProps) {
+export default function Lobby({ room, players, me, isHost, onlineIds, onStart, starting, error, onSetMode }: LobbyProps) {
   const canStart = players.length >= MIN_PLAYERS;
+  const mode = room.mode ?? 'classic';
+  const settings = room.settings ?? {};
 
   return (
     <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
@@ -22,6 +25,13 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
       </div>
 
       <RoomCodeBadge code={room.room_code} />
+
+      <ModePicker
+        mode={mode}
+        settings={settings}
+        editable={isHost && !!onSetMode}
+        onChange={(nextMode, nextSettings) => onSetMode?.(nextMode, nextSettings)}
+      />
 
       <div>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">

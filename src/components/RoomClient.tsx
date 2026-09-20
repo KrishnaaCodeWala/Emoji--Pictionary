@@ -6,7 +6,7 @@ import { useRoom } from '@/hooks/useRoom';
 import { api } from '@/lib/api';
 import { getPlayerId } from '@/lib/player';
 import { ADVANCE_GRACE_MS, DRAWER_ABSENT_MS } from '@/lib/constants';
-import type { Player } from '@/lib/types';
+import type { GameMode, HintKey, Player, RoomSettings, WordRes } from '@/lib/types';
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
 import Results from '@/components/Results';
@@ -15,11 +15,13 @@ export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
   const {
     room, players, messages, canvas, me, isHost, isDrawer, onlineIds, loading, error,
+    hints, reveal, reveals,
   } = useRoom(code);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const [word, setWord] = useState<string | null>(null);
+  const [wordRes, setWordRes] = useState<WordRes | null>(null);
+  const [closeFlash, setCloseFlash] = useState(0);
 
   const hasStoredPlayer = getPlayerId(code) !== null;
 
@@ -39,11 +41,11 @@ export default function RoomClient({ code }: { code: string }) {
     api
       .getWord(code, me.id)
       .then((res) => {
-        if (!cancelled) setWord(res.word);
+        if (!cancelled) setWordRes(res);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setWord(null);
+          setWordRes(null);
           setActionError(err instanceof Error ? err.message : 'Failed to fetch word');
         }
       });
@@ -75,8 +77,27 @@ export default function RoomClient({ code }: { code: string }) {
 
   const handleGuess = (guess: string) => {
     if (!me) return;
-    api.guess({ roomCode: code, playerId: me.id, guess }).catch((err: unknown) => {
-      setActionError(err instanceof Error ? err.message : 'Failed to submit guess');
+    api
+      .guess({ roomCode: code, playerId: me.id, guess })
+      .then((res) => {
+        if (res.close) setCloseFlash((n) => n + 1);
+      })
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : 'Failed to submit guess');
+      });
+  };
+
+  const handleSetMode = (mode: GameMode, settings: RoomSettings) => {
+    if (!me) return;
+    api.setMode({ roomCode: code, playerId: me.id, mode, settings }).catch((err: unknown) => {
+      setActionError(err instanceof Error ? err.message : 'Failed to set mode');
+    });
+  };
+
+  const handleRevealHint = (hint: HintKey) => {
+    if (!me) return;
+    api.revealHint({ roomCode: code, playerId: me.id, hint }).catch((err: unknown) => {
+      setActionError(err instanceof Error ? err.message : 'Failed to reveal hint');
     });
   };
 
@@ -183,6 +204,7 @@ export default function RoomClient({ code }: { code: string }) {
           onStart={handleStart}
           starting={starting}
           error={actionError}
+          onSetMode={handleSetMode}
         />
       )}
       {room.status === 'playing' && (
@@ -193,14 +215,25 @@ export default function RoomClient({ code }: { code: string }) {
           isDrawer={isDrawer}
           canvas={canvas}
           messages={messages}
-          word={isDrawer ? word : null}
+          word={isDrawer ? wordRes?.word ?? null : null}
           onDraw={handleDraw}
           onGuess={handleGuess}
           onExpire={handleExpire}
+          prompt={isDrawer ? wordRes?.prompt ?? null : null}
+          hints={hints}
+          reveal={reveal}
+          closeFlash={closeFlash}
+          onRevealHint={handleRevealHint}
         />
       )}
       {room.status === 'finished' && (
-        <Results players={players} isHost={isHost} onPlayAgain={handlePlayAgain} />
+        <Results
+          players={players}
+          isHost={isHost}
+          onPlayAgain={handlePlayAgain}
+          mode={room.mode}
+          reveals={reveals}
+        />
       )}
     </div>
   );

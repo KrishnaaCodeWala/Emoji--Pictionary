@@ -3,8 +3,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
-import { ROOM_POLL_MS } from '@/lib/constants';
+import { ROOM_POLL_MS, REVEAL_DURATION_MS, SYS_HINTS_PREFIX, SYS_REVEAL_PREFIX } from '@/lib/constants';
 import type { Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+
+function parseHints(content: string): PublicHints | null {
+  try {
+    return JSON.parse(content.slice(SYS_HINTS_PREFIX.length)) as PublicHints;
+  } catch {
+    return null;
+  }
+}
+
+function parseReveal(content: string): RevealPayload | null {
+  try {
+    return JSON.parse(content.slice(SYS_REVEAL_PREFIX.length)) as RevealPayload;
+  } catch {
+    return null;
+  }
+}
+
+function isStructuredSystemMessage(m: Message): boolean {
+  return m.type === 'system' && (m.content.startsWith(SYS_HINTS_PREFIX) || m.content.startsWith(SYS_REVEAL_PREFIX));
+}
 
 export interface UseRoomResult {
   room: RoomPublic | null;
@@ -37,9 +57,16 @@ export function useRoom(roomCode: string): UseRoomResult {
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hints, setHints] = useState<PublicHints | null>(null);
+  const [reveal, setReveal] = useState<RevealPayload | null>(null);
+  const [reveals, setReveals] = useState<RevealPayload[]>([]);
 
   const roundNumberRef = useRef<number | null>(null);
   const statusRef = useRef<RoomPublic['status'] | null>(null);
+  /** Epoch ms when the current `reveal` was set (client time, or the message's created_at
+   *  on initial load); used to keep the reveal card visible for REVEAL_DURATION_MS even
+   *  after round_number advances. */
+  const revealSetAtRef = useRef<number | null>(null);
   const playerId = getPlayerId(roomCode);
 
   const fetchRoom = useCallback(async (): Promise<RoomPublic | null> => {
@@ -55,12 +82,18 @@ export function useRoom(roomCode: string): UseRoomResult {
     const r = data as RoomPublic;
     if (roundNumberRef.current !== null && roundNumberRef.current !== r.round_number) {
       setCanvas('');
+      // hints are not cleared here: they carry roundNumber and are filtered on return,
+      // so a hints message that arrives before this refetch completes is not lost.
     }
     roundNumberRef.current = r.round_number;
-    // Back to lobby after a reset: drop the old game's chat and canvas.
+    // Back to lobby after a reset: drop the old game's chat, canvas and charades state.
     if (statusRef.current !== null && statusRef.current !== 'lobby' && r.status === 'lobby') {
       setMessages([]);
       setCanvas('');
+      setHints(null);
+      setReveal(null);
+      setReveals([]);
+      revealSetAtRef.current = null;
     }
     statusRef.current = r.status;
     setRoom(r);
@@ -117,13 +150,13 @@ export function useRoom(roomCode: string): UseRoomResult {
         setError(messagesRes.error.message);
       } else {
         const msgs = ((messagesRes.data ?? []) as Message[]).slice().reverse();
-        setMessages(msgs);
+        setMessages(msgs.filter((m) => !isStructuredSystemMessage(m)));
         // Messages aren't tagged by round, so bound the search to messages after the
-        // latest system message (each turn change inserts one) — that approximates
-        // "this round's" emoji_update without a schema change.
+        // latest plain (non-structured) system message (each turn change inserts one) —
+        // that approximates "this round's" emoji_update/hints without a schema change.
         let lastSystemIndex = -1;
         for (let i = msgs.length - 1; i >= 0; i--) {
-          if (msgs[i].type === 'system') {
+          if (msgs[i].type === 'system' && !isStructuredSystemMessage(msgs[i])) {
             lastSystemIndex = i;
             break;
           }
@@ -133,6 +166,37 @@ export function useRoom(roomCode: string): UseRoomResult {
             setCanvas(msgs[i].content);
             break;
           }
+        }
+        // Current round's hints: the latest hints: message after the latest plain
+        // system message.
+        for (let i = msgs.length - 1; i > lastSystemIndex; i--) {
+          const m = msgs[i];
+          if (m.type === 'system' && m.content.startsWith(SYS_HINTS_PREFIX)) {
+            const parsed = parseHints(m.content);
+            if (parsed) setHints(parsed);
+            break;
+          }
+        }
+        // Reveals: all reveal: messages in order, deduped by roundNumber (last wins).
+        const revealList: RevealPayload[] = [];
+        let latestReveal: { payload: RevealPayload; createdAt: string } | null = null;
+        for (const m of msgs) {
+          if (m.type === 'system' && m.content.startsWith(SYS_REVEAL_PREFIX)) {
+            const parsed = parseReveal(m.content);
+            if (!parsed) continue;
+            const existingIdx = revealList.findIndex((r) => r.roundNumber === parsed.roundNumber);
+            if (existingIdx >= 0) {
+              revealList[existingIdx] = parsed;
+            } else {
+              revealList.push(parsed);
+            }
+            latestReveal = { payload: parsed, createdAt: m.created_at };
+          }
+        }
+        setReveals(revealList);
+        if (latestReveal) {
+          setReveal(latestReveal.payload);
+          revealSetAtRef.current = new Date(latestReveal.createdAt).getTime();
         }
       }
 
@@ -180,6 +244,27 @@ export function useRoom(roomCode: string): UseRoomResult {
           const msg = payload.new as Message;
           if (msg.type === 'emoji_update') {
             setCanvas(msg.content);
+          } else if (msg.type === 'system' && msg.content.startsWith(SYS_HINTS_PREFIX)) {
+            const parsed = parseHints(msg.content);
+            if (parsed) setHints(parsed);
+            // revealed_hints lives on the room row; refresh so the actor's buttons update now.
+            void refetchRoom();
+          } else if (msg.type === 'system' && msg.content.startsWith(SYS_REVEAL_PREFIX)) {
+            const parsed = parseReveal(msg.content);
+            if (parsed) {
+              setReveal(parsed);
+              // Client clock, not created_at: avoids skew shortening/lengthening the card.
+              revealSetAtRef.current = Date.now();
+              setReveals((prev) => {
+                const existingIdx = prev.findIndex((r) => r.roundNumber === parsed.roundNumber);
+                if (existingIdx >= 0) {
+                  const next = prev.slice();
+                  next[existingIdx] = parsed;
+                  return next;
+                }
+                return [...prev, parsed];
+              });
+            }
           } else {
             setMessages((prev) => [...prev, msg].slice(-100));
             if (msg.type === 'system') {
@@ -213,6 +298,22 @@ export function useRoom(roomCode: string): UseRoomResult {
     };
   }, [roomId, playerId, supabase, refetchRoom]);
 
+  // Keep the reveal card visible across the round transition: once round_number moves
+  // past the round the reveal belongs to, clear it REVEAL_DURATION_MS after it was set
+  // (not from when the round changed), so guessers get the full reveal window.
+  const revealRoundNumber = reveal?.roundNumber ?? null;
+  const currentRoundNumber = room?.round_number ?? null;
+  useEffect(() => {
+    if (revealRoundNumber === null || currentRoundNumber === null) return;
+    if (revealRoundNumber === currentRoundNumber) return;
+    const setAt = revealSetAtRef.current ?? Date.now();
+    const remaining = Math.max(0, REVEAL_DURATION_MS - (Date.now() - setAt));
+    const timer = setTimeout(() => {
+      setReveal(null);
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [revealRoundNumber, currentRoundNumber]);
+
   // Fallback poll of rooms_public while the game is in progress.
   const roomStatus = room?.status ?? null;
   useEffect(() => {
@@ -239,8 +340,8 @@ export function useRoom(roomCode: string): UseRoomResult {
     loading,
     error,
     refetchRoom,
-    hints: null,
-    reveal: null,
-    reveals: [],
+    hints: hints && (hints.roundNumber === undefined || hints.roundNumber === room?.round_number) ? hints : null,
+    reveal,
+    reveals,
   };
 }

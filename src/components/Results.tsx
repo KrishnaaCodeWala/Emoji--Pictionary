@@ -1,5 +1,6 @@
 'use client';
 import type { GameMode, Player, RevealPayload } from '@/lib/types';
+import PosterFrame from './charades/PosterFrame';
 
 export interface ResultsProps {
   players: Player[]; isHost: boolean; onPlayAgain: () => void;
@@ -9,7 +10,7 @@ export interface ResultsProps {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function Results({ players, isHost, onPlayAgain }: ResultsProps) {
+export default function Results({ players, isHost, onPlayAgain, mode, reveals }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   // Compute shared ranks (ties share rank).
@@ -52,6 +53,30 @@ export default function Results({ players, isHost, onPlayAgain }: ResultsProps) 
           </li>
         ))}
       </ol>
+
+      {mode === 'charades' && reveals && reveals.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+            Rounds
+          </h2>
+          <ol className="flex flex-col gap-2">
+            {reveals.map((r) => (
+              <li
+                key={r.roundNumber}
+                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+              >
+                <PosterFrame url={r.poster_url} title={r.title} className="w-10" />
+                <span className="text-sm">
+                  Round {r.roundNumber}: {r.title}
+                  {r.year != null ? ` (${r.year})` : ''}
+                  {' - '}
+                  {r.guesserNickname ? `guessed by ${r.guesserNickname}` : 'nobody'}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {isHost ? (
         <button
