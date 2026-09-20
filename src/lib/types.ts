@@ -1,6 +1,8 @@
 export type RoomStatus = 'lobby' | 'playing' | 'finished';
 export type MessageType = 'guess' | 'emoji_update' | 'system';
-export type GameMode = 'classic' | 'charades';
+export type GameMode = 'classic' | 'charades' | 'relay';
+export type RelayPhase = 'write' | 'draw' | 'guess' | 'album';
+export type RelayStepKind = 'write' | 'draw' | 'guess';
 export type PromptKind = 'movie' | 'series' | 'game';
 export type HintKey = 'year' | 'genre' | 'wordCount' | 'firstLetters';
 
@@ -11,6 +13,8 @@ export interface RoomSettings {
   kinds?: PromptKind[];
   /** Server-managed: prompt ids already used in this room (avoid repeats). */
   usedPromptIds?: string[];
+  /** Relay only: seconds per phase. Defaults in constants (RELAY_TIMERS). */
+  relayTimers?: { write: number; draw: number; guess: number };
 }
 
 /** Row of the `rooms_public` view (no current_word). This is what clients see. */
@@ -27,7 +31,47 @@ export interface RoomPublic {
   mode: GameMode;
   settings: RoomSettings;
   revealed_hints: HintKey[];
+  // ---- v3: relay ----
+  relay_phase: RelayPhase | null;
+  relay_step: number;
+  album_chain: number | null;
+  album_step: number | null;
+  game_no: number;
 }
+
+// ---- v3: Canvas Relay ----
+/** GET /api/relay/task?roomCode=&playerId= : the one thing the caller must do right now. */
+export interface RelayTaskRes {
+  phase: RelayPhase;
+  step: number;
+  /** null during album */
+  kind: RelayStepKind | null;
+  /** previous step of the chain you are working on (null at step 0 / album) */
+  input: { kind: RelayStepKind; content: string } | null;
+  submitted: boolean;
+  endsAt: string | null;
+}
+export interface RelaySubmitReq { roomCode: string; playerId: string; step: number; content: string }
+/** Broadcast as a system message: SYS_RELAY_PREFIX + JSON. */
+export interface RelayProgress { step: number; submitted: number; total: number }
+export interface RelayAdvanceReq { roomCode: string; playerId: string }
+
+export interface AlbumStep { step: number; kind: RelayStepKind; content: string; authorNickname: string | null }
+/** GET /api/relay/album?roomCode=&playerId= : current chain, only steps revealed so far. */
+export interface AlbumChainRes {
+  chainIndex: number;
+  totalChains: number;
+  originNickname: string | null;
+  steps: AlbumStep[];
+  /** index of the last revealed step (steps.length - 1) */
+  revealedUpTo: number;
+  /** total steps in this chain (= players at start) */
+  totalSteps: number;
+  finished: boolean;
+}
+export interface AlbumAdvanceReq { roomCode: string; playerId: string }
+/** Per-chain summary for Results, sent as system message SYS_CHAIN_PREFIX + JSON at game end. */
+export interface ChainSummary { chainIndex: number; originNickname: string | null; firstPhrase: string; lastGuess: string }
 
 /** Full `rooms` row. Server only. */
 export interface RoomRow extends RoomPublic {

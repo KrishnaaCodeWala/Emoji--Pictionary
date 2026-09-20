@@ -1,5 +1,6 @@
 'use client';
 import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+import type { UseRelayResult } from '@/hooks/useRelay';
 import { ROUNDS_PER_PLAYER } from '@/lib/constants';
 import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
@@ -27,6 +28,10 @@ export interface GameProps {
   /** Toggles each time the guesser's last guess was a near miss. */
   closeFlash?: number;
   onRevealHint?: (hint: HintKey) => void;
+  // ---- v3 (relay) ----
+  relay?: UseRelayResult;
+  /** relay: timer expiry handler (calls /api/relay/advance) */
+  onRelayExpire?: () => void;
 }
 
 const noop = () => {};

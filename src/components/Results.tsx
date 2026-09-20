@@ -1,11 +1,13 @@
 'use client';
-import type { GameMode, Player, RevealPayload } from '@/lib/types';
+import type { ChainSummary, GameMode, Player, RevealPayload } from '@/lib/types';
 import PosterFrame from './charades/PosterFrame';
 
 export interface ResultsProps {
   players: Player[]; isHost: boolean; onPlayAgain: () => void;
   /** v2 */
   mode?: GameMode; reveals?: RevealPayload[];
+  /** v3: relay chain summaries */
+  chains?: ChainSummary[];
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];

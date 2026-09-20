@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
 import { ROOM_POLL_MS, REVEAL_DURATION_MS, SYS_HINTS_PREFIX, SYS_REVEAL_PREFIX } from '@/lib/constants';
-import type { Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+import type { ChainSummary, Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 
 function parseHints(content: string): PublicHints | null {
   try {
@@ -46,6 +46,10 @@ export interface UseRoomResult {
   reveal: RevealPayload | null;
   /** All reveals seen this game, oldest first (for Results). */
   reveals: RevealPayload[];
+  /** v3 (Track B): relay chain summaries parsed from 'chain:' system messages. */
+  chains: ChainSummary[];
+  /** v3 (Track B): raw system messages incl. structured ones, for useRelay to parse 'relay:' progress. */
+  systemFeed: Message[];
 }
 
 export function useRoom(roomCode: string): UseRoomResult {
@@ -341,6 +345,8 @@ export function useRoom(roomCode: string): UseRoomResult {
     error,
     refetchRoom,
     hints: hints && (hints.roundNumber === undefined || hints.roundNumber === room?.round_number) ? hints : null,
+    chains: [],
+    systemFeed: [],
     reveal,
     reveals,
   };

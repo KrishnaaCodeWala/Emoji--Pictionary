@@ -3,6 +3,7 @@ import type {
   AdvanceReq, ApiError, CreateRoomReq, CreateRoomRes, DrawReq, GuessReq, GuessRes,
   JoinRoomReq, JoinRoomRes, OkRes, ResetRoomReq, StartRoomReq, WordRes,
   RevealHintReq, SetModeReq,
+  AlbumAdvanceReq, AlbumChainRes, RelayAdvanceReq, RelaySubmitReq, RelayTaskRes,
 } from './types';
 
 async function parseJson(res: Response): Promise<unknown> {
@@ -38,6 +39,12 @@ async function getJson<TRes>(url: string): Promise<TRes> {
 }
 
 export const api = {
+  // TODO (Track B): v3 relay
+  relayTask: (_roomCode: string, _playerId: string): Promise<RelayTaskRes> => Promise.reject(new Error('Not implemented')),
+  relaySubmit: (_b: RelaySubmitReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
+  relayAdvance: (_b: RelayAdvanceReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
+  relayAlbum: (_roomCode: string, _playerId: string): Promise<AlbumChainRes> => Promise.reject(new Error('Not implemented')),
+  albumAdvance: (_b: AlbumAdvanceReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
   setMode: (b: SetModeReq): Promise<OkRes> =>
     postJson<OkRes>('/api/rooms/mode', b),
   revealHint: (b: RevealHintReq): Promise<OkRes> =>

@@ -27,3 +27,18 @@ export const HINT_KEYS = ['year', 'genre', 'wordCount', 'firstLetters'] as const
 /** Prefixes for structured system messages. Client parses these. */
 export const SYS_HINTS_PREFIX = 'hints:';
 export const SYS_REVEAL_PREFIX = 'reveal:';
+
+// ---- v3: Canvas Relay ----
+export const RELAY_TIMERS = { write: 45, draw: 60, guess: 45 } as const;
+export const RELAY_TIMER_PRESETS = {
+  quick: { write: 30, draw: 40, guess: 30 },
+  normal: { write: 45, draw: 60, guess: 45 },
+  relaxed: { write: 60, draw: 90, guess: 60 },
+} as const;
+export const RELAY_MIN_PLAYERS_HINT = 3;
+export const RELAY_PHRASE_MAX = 80;
+/** shrug emoji, used when a draw step times out */
+export const RELAY_DEFAULT_DRAW = '\u{1F937}';
+export const RELAY_DEFAULT_GUESS = '...';
+export const SYS_RELAY_PREFIX = 'relay:';
+export const SYS_CHAIN_PREFIX = 'chain:';
