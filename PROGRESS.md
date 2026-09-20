@@ -18,7 +18,7 @@ host in the lobby:
 | Mode | Loop | Status |
 |---|---|---|
 | **Classic** (Emoji Pictionary) | one drawer draws a secret word with emojis, others guess in chat, rotate | live, E2E green |
-| **Dumb Charades** | one actor gets a movie / series / game title, draws with emojis, can reveal hints (year, genre, word count, first letters) at a points cost; fuzzy title matching; poster reveal card after each round | live, E2E green; **posters not populated yet** (see §7) |
+| **Dumb Charades** | one actor gets a movie / series / game title, draws with emojis, can reveal hints (year, genre, word count, first letters) at a points cost; fuzzy title matching; poster reveal card after each round | live, E2E green, posters populated (Wikipedia) |
 | **Canvas Relay** (Gartic-style) | everyone writes a phrase → draws someone else's → guesses someone else's drawing → … ; host walks everyone through the resulting "album" | live, E2E green |
 
 Design docs: `emoji_pictionary_build_guide.md` (original spec), `BUILD_PLAN.md` (v1),
@@ -31,7 +31,7 @@ contracts; the code is the source of truth where they differ.
 - **Tailwind CSS v4** with theme tokens defined in `src/app/globals.css` (see §5).
 - **Supabase**: Postgres + Realtime (`postgres_changes` on `players` and `messages`) + Presence.
 - **Vercel** hosting. Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SUPABASE_SERVICE_ROLE_KEY` (server only). Later: `TMDB_API_KEY`, `RAWG_API_KEY`.
+  `SUPABASE_SERVICE_ROLE_KEY` (server only). No other keys are needed.
 - Lint: `eslint-config-next` with **eslint-plugin-react-hooks 7** strict rules
   (`set-state-in-effect`, `refs`, `purity`). `npm run lint` must stay at 0 errors — the build
   does not fail on lint but we treat it as required.
@@ -150,13 +150,13 @@ then `migrations/003_relay.sql` in the SQL editor; `npm run seed:prompts`.
 
 ## 7. Open items (not frontend, but you will see the gaps)
 
-1. **Charades posters.** `prompts.poster_url` is null for every seeded title, so
-   `PosterFrame` always shows its fallback tile. The plan is an import script
-   (`scripts/import-catalog.ts --source tmdb|rawg`) once the owner has TMDB + RAWG API keys;
-   steps and endpoints are at the bottom of `BUILD_PLAN_V2.md`. When it lands, add the two
-   attribution lines to the footer (TMDB requires "This product uses the TMDB API but is
-   not endorsed or certified by TMDB" + logo; RAWG a "Game data by RAWG" link) and allow
-   `image.tmdb.org` / `media.rawg.io` if you switch `<img>` to `next/image`.
+1. **Charades posters: done via Wikipedia (keyless).** `scripts/import-posters.ts` looks
+   each title up with the MediaWiki API (`pilicense=any` is required because posters are
+   non-free) and writes the lead image to `prompts.poster_url`; 610 of 646 titles have one.
+   The 36 misses (mostly TV series whose article has no lead image) show `PosterFrame`'s
+   fallback tile. The footer credits Wikipedia. Re-run `npx tsx scripts/import-posters.ts`
+   after adding seed titles (it only touches rows with a null poster; `--force` redoes all).
+   TMDB/RAWG import remains an optional upgrade if keys ever become available.
 2. **Relay reactions / scoring** — schema-less for now; relay shows no scores (Results hides
    the scoreboard when all scores are 0 in relay mode).
 3. **Room cleanup** — `supabase/cleanup.sql` is optional and not scheduled yet.
@@ -203,4 +203,5 @@ optional and wire it in `RoomClient`.
   Supabase + Vercel.
 - v2 (charades) — mode system, prompt catalog, hints, fuzzy matching, reveal card.
 - v3 (relay) — simultaneous step loop, chains, host-paced album, double-tap race fix.
-- Next — posters import (waiting on API keys), then frontend modernization (you).
+- Posters imported from Wikipedia (no API keys needed); lobby mode-picker optimistic state fix.
+- Next — frontend modernization (you).

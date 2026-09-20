@@ -16,8 +16,13 @@ export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
   const {
     room, players, messages, canvas, me, isHost, isDrawer, onlineIds, loading, error,
-    hints, reveal, reveals, chains, systemFeed,
+    hints, reveal, reveals, chains, systemFeed, refetchRoom,
   } = useRoom(code);
+
+  // Optimistic mode/settings so rapid toggles in the lobby build on each other instead of
+  // on stale server state. Cleared when the latest setMode request settles.
+  const [optimisticMode, setOptimisticMode] = useState<{ mode: GameMode; settings: RoomSettings } | null>(null);
+  const setModeSeqRef = useRef(0);
 
   // Always called (hooks order): internally inert unless room.mode === 'relay'.
   const relay = useRelay(code, room, me, systemFeed);
@@ -93,9 +98,17 @@ export default function RoomClient({ code }: { code: string }) {
 
   const handleSetMode = (mode: GameMode, settings: RoomSettings) => {
     if (!me) return;
-    api.setMode({ roomCode: code, playerId: me.id, mode, settings }).catch((err: unknown) => {
-      setActionError(err instanceof Error ? err.message : 'Failed to set mode');
-    });
+    const seq = ++setModeSeqRef.current;
+    setOptimisticMode({ mode, settings });
+    api
+      .setMode({ roomCode: code, playerId: me.id, mode, settings })
+      .then(() => refetchRoom())
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : 'Failed to set mode');
+      })
+      .finally(() => {
+        if (setModeSeqRef.current === seq) setOptimisticMode(null);
+      });
   };
 
   const handleRevealHint = (hint: HintKey) => {
@@ -226,7 +239,7 @@ export default function RoomClient({ code }: { code: string }) {
       )}
       {room.status === 'lobby' && (
         <Lobby
-          room={room}
+          room={optimisticMode ? { ...room, mode: optimisticMode.mode, settings: optimisticMode.settings } : room}
           players={players}
           me={me}
           isHost={isHost}

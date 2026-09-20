@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node-only scripts (Playwright E2E, seeders) are not app code.
+    "scripts/e2e/**",
   ]),
 ]);
 
