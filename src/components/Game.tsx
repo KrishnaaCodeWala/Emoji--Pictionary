@@ -120,7 +120,7 @@ export default function Game({
       <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-bold">
-            Step {room.relay_step + 1} of {players.length} &middot; {RELAY_PHASE_LABELS[phase]}
+            {phase === 'album' ? 'Album' : `Step ${room.relay_step + 1} of ${players.length} · ${RELAY_PHASE_LABELS[phase]}`}
           </h1>
           {phase !== 'album' && <Timer endsAt={room.round_end_time} onExpire={onRelayExpire ?? noop} />}
         </div>
