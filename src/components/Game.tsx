@@ -1,5 +1,5 @@
 'use client';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 import type { UseRelayResult } from '@/hooks/useRelay';
 import { ROUNDS_PER_PLAYER } from '@/lib/constants';
@@ -75,6 +75,13 @@ export default function Game({
   room, players, me, isDrawer, canvas, messages, word, onDraw, onGuess, onExpire,
   prompt, hints, reveal, closeFlash, onRevealHint, relay, onRelayExpire,
 }: GameProps) {
+  // Relay album: disable "Next" while a request is in flight so a double tap cannot skip a card.
+  const [albumAdvancing, setAlbumAdvancing] = useState(false);
+  const handleAlbumNext = () => {
+    if (!relay || albumAdvancing) return;
+    setAlbumAdvancing(true);
+    relay.albumAdvance().finally(() => setAlbumAdvancing(false));
+  };
   const drawer = players.find((p) => p.id === room.current_drawer_id) ?? null;
   const totalRounds = players.length * (room.settings?.rounds ?? ROUNDS_PER_PLAYER);
 
@@ -113,7 +120,7 @@ export default function Game({
         <GuessPanel canvas={task.input?.content ?? ''} onSubmit={relay.submit} submitted={task.submitted} />
       );
     } else {
-      body = <AlbumViewer album={relay.album} isHost={isHost} onNext={relay.albumAdvance} />;
+      body = <AlbumViewer album={relay.album} isHost={isHost} onNext={handleAlbumNext} advancing={albumAdvancing} />;
     }
 
     return (

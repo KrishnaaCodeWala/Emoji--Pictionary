@@ -524,22 +524,31 @@ export async function albumAdvance(roomId: string): Promise<void> {
 
   if (albumStep + 1 < n) {
     const newStep = albumStep + 1;
-    const { error } = await admin
+    // Conditional update: a second overlapping call (double tap) becomes a no-op.
+    const { data, error } = await admin
       .from('rooms')
       .update({ album_step: newStep })
-      .eq('id', roomId);
+      .eq('id', roomId)
+      .eq('album_chain', albumChainIndex)
+      .eq('album_step', albumStep)
+      .select('id');
     if (error) throw new HttpError(500, error.message);
+    if (!data || data.length !== 1) return;
     await insertSystemMessage(roomId, `Album: chain ${albumChainIndex + 1}, card ${newStep + 1}`);
     return;
   }
 
   if (albumChainIndex + 1 < n) {
     const newChain = albumChainIndex + 1;
-    const { error } = await admin
+    const { data, error } = await admin
       .from('rooms')
       .update({ album_chain: newChain, album_step: 0 })
-      .eq('id', roomId);
+      .eq('id', roomId)
+      .eq('album_chain', albumChainIndex)
+      .eq('album_step', albumStep)
+      .select('id');
     if (error) throw new HttpError(500, error.message);
+    if (!data || data.length !== 1) return;
     await insertSystemMessage(roomId, `Album: chain ${newChain + 1}, card 1`);
     return;
   }
