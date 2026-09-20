@@ -90,7 +90,7 @@ supabase/
   migrations/002_charades.sql        mode/settings/prompts
   migrations/003_relay.sql           relay columns + chains/chain_steps
   cleanup.sql                        optional pg_cron 24h room cleanup
-data/catalog.seed.json               657 seeded charades titles (no poster URLs yet)
+data/catalog.seed.json               657 seeded charades titles (posters filled in DB by import-posters)
 scripts/
   seed-prompts.ts                    npm run seed:prompts
   smoke-api.sh  smoke-charades.sh  smoke-relay.sh     curl API tests
