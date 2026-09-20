@@ -32,6 +32,7 @@ export function useRoom(roomCode: string): UseRoomResult {
   const [error, setError] = useState<string | null>(null);
 
   const roundNumberRef = useRef<number | null>(null);
+  const statusRef = useRef<RoomPublic['status'] | null>(null);
   const playerId = getPlayerId(roomCode);
 
   const fetchRoom = useCallback(async (): Promise<RoomPublic | null> => {
@@ -49,6 +50,12 @@ export function useRoom(roomCode: string): UseRoomResult {
       setCanvas('');
     }
     roundNumberRef.current = r.round_number;
+    // Back to lobby after a reset: drop the old game's chat and canvas.
+    if (statusRef.current !== null && statusRef.current !== 'lobby' && r.status === 'lobby') {
+      setMessages([]);
+      setCanvas('');
+    }
+    statusRef.current = r.status;
     setRoom(r);
     setError(null);
     return r;
@@ -62,6 +69,7 @@ export function useRoom(roomCode: string): UseRoomResult {
   useEffect(() => {
     let cancelled = false;
     roundNumberRef.current = null;
+    statusRef.current = null;
 
     (async () => {
       setLoading(true);

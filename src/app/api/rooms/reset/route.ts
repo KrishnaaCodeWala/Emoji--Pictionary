@@ -46,6 +46,15 @@ export async function POST(req: Request) {
       .eq('id', room.id);
     if (roomError) throw new HttpError(500, roomError.message);
 
+    // System message so subscribed clients refetch the room immediately.
+    const { error: msgError } = await admin.from('messages').insert({
+      room_id: room.id,
+      player_id: null,
+      content: 'Back to the lobby. Scores reset.',
+      type: 'system',
+    });
+    if (msgError) throw new HttpError(500, msgError.message);
+
     return jsonOk<OkRes>({ ok: true });
   } catch (err) {
     return handleApiError(err);

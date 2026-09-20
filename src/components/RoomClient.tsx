@@ -86,7 +86,13 @@ export default function RoomClient({ code }: { code: string }) {
     });
   };
 
-  const roundAtExpireRef = useRef<number | null>(null);
+  // Always holds the latest round number so the grace-period check below is not stale.
+  const latestRoundRef = useRef<number | null>(null);
+  const currentRound = room?.round_number ?? null;
+  useEffect(() => {
+    latestRoundRef.current = currentRound;
+  }, [currentRound]);
+
   const handleExpire = () => {
     if (!me || !room) return;
     const callAdvance = () => {
@@ -98,25 +104,34 @@ export default function RoomClient({ code }: { code: string }) {
       callAdvance();
       return;
     }
-    roundAtExpireRef.current = room.round_number;
+    const roundAtExpire = room.round_number;
     setTimeout(() => {
-      if (room.round_number === roundAtExpireRef.current) {
+      if (latestRoundRef.current === roundAtExpire) {
         callAdvance();
       }
     }, ADVANCE_GRACE_MS);
   };
 
   if (loading) {
-    return <div>Loading room…</div>;
+    return <main className="gutter flex min-h-screen items-center justify-center text-lg opacity-70">Loading room...</main>;
   }
 
   if (error || !room) {
-    return <div>Error: {error ?? 'Room not found'}</div>;
+    return (
+      <main className="gutter flex min-h-screen flex-col items-center justify-center gap-4">
+        <p className="text-lg">{error ?? 'Room not found'}</p>
+        <button className="rounded-xl border px-4 py-2" onClick={() => router.push('/')}>Back home</button>
+      </main>
+    );
   }
 
   return (
     <div>
-      {actionError && <div role="alert">{actionError}</div>}
+      {actionError && room.status !== 'lobby' && (
+        <div role="alert" className="gutter mt-3 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-2 text-sm text-red-600 dark:text-red-300">
+          {actionError}
+        </div>
+      )}
       {room.status === 'lobby' && (
         <Lobby
           room={room}
