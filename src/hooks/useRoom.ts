@@ -61,9 +61,18 @@ export function useRoom(roomCode: string): UseRoomResult {
     return r;
   }, [roomCode, supabase]);
 
+  // Also refreshes players: a join that lands before the Realtime channel is
+  // subscribed would otherwise be missed until a page reload.
   const refetchRoom = useCallback(async () => {
-    await fetchRoom();
-  }, [fetchRoom]);
+    const r = await fetchRoom();
+    if (!r) return;
+    const { data } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', r.id)
+      .order('turn_order', { ascending: true });
+    if (data) setPlayers(data as Player[]);
+  }, [fetchRoom, supabase]);
 
   // Initial load: room, players, last 100 messages.
   useEffect(() => {
@@ -185,8 +194,10 @@ export function useRoom(roomCode: string): UseRoomResult {
     }
 
     channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED' && playerId) {
-        void channel.track({ playerId });
+      if (status === 'SUBSCRIBED') {
+        if (playerId) void channel.track({ playerId });
+        // Catch up on anything inserted between the initial load and now.
+        void refetchRoom();
       }
     });
 
