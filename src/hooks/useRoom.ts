@@ -102,7 +102,17 @@ export function useRoom(roomCode: string): UseRoomResult {
       } else {
         const msgs = ((messagesRes.data ?? []) as Message[]).slice().reverse();
         setMessages(msgs);
+        // Messages aren't tagged by round, so bound the search to messages after the
+        // latest system message (each turn change inserts one) — that approximates
+        // "this round's" emoji_update without a schema change.
+        let lastSystemIndex = -1;
         for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].type === 'system') {
+            lastSystemIndex = i;
+            break;
+          }
+        }
+        for (let i = msgs.length - 1; i > lastSystemIndex; i--) {
           if (msgs[i].type === 'emoji_update') {
             setCanvas(msgs[i].content);
             break;

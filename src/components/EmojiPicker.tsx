@@ -67,14 +67,16 @@ export default function EmojiPicker({ value, onChange, disabled }: EmojiPickerPr
         {local || <span className="text-sm text-white/40">Tap emojis below to draw...</span>}
       </div>
 
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Emoji categories">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button
             key={cat.name}
             type="button"
+            role="tab"
+            aria-selected={i === activeCategory}
             disabled={disabled}
             onClick={() => setActiveCategory(i)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-sm capitalize transition-colors ${
+            className={`min-h-10 shrink-0 rounded-full px-3 py-2 text-sm capitalize transition-colors ${
               i === activeCategory
                 ? 'bg-indigo-500 text-white'
                 : 'bg-white/10 text-white/70 hover:bg-white/20'
@@ -85,14 +87,14 @@ export default function EmojiPicker({ value, onChange, disabled }: EmojiPickerPr
         ))}
       </div>
 
-      <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
+      <div className="grid max-h-56 grid-cols-6 gap-1.5 overflow-y-auto sm:max-h-64 sm:grid-cols-8">
         {category.emojis.map((emoji, i) => (
           <button
             key={`${emoji}-${i}`}
             type="button"
             disabled={disabled}
             onClick={() => addEmoji(emoji)}
-            className="flex aspect-square items-center justify-center rounded-lg bg-white/5 text-2xl active:scale-95 hover:bg-white/15 disabled:opacity-40 disabled:active:scale-100"
+            className="flex aspect-square min-h-10 min-w-10 items-center justify-center rounded-lg bg-white/5 text-2xl active:scale-95 hover:bg-white/15 disabled:opacity-40 disabled:active:scale-100"
           >
             {emoji}
           </button>
@@ -104,7 +106,7 @@ export default function EmojiPicker({ value, onChange, disabled }: EmojiPickerPr
           type="button"
           disabled={disabled}
           onClick={backspace}
-          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20 disabled:opacity-40"
+          className="min-h-10 flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20 disabled:opacity-40"
         >
           Backspace
         </button>
@@ -112,7 +114,7 @@ export default function EmojiPicker({ value, onChange, disabled }: EmojiPickerPr
           type="button"
           disabled={disabled}
           onClick={clear}
-          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20 disabled:opacity-40"
+          className="min-h-10 flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20 disabled:opacity-40"
         >
           Clear
         </button>

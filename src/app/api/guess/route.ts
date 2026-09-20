@@ -1,7 +1,11 @@
-import { jsonOk, handleApiError, HttpError } from '@/lib/http';
+import { jsonOk, jsonError, handleApiError, HttpError } from '@/lib/http';
 import { getRoomByCode, awardAndAdvance } from '@/lib/game';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/rateLimit';
 import type { GuessReq, GuessRes } from '@/lib/types';
+
+// Safety cap on the raw string length before normalization/trimming.
+const MAX_GUESS_RAW_LENGTH = 200;
 
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -20,6 +24,13 @@ export async function POST(req: Request) {
     }
     if (typeof guess !== 'string') {
       throw new HttpError(400, 'guess is required');
+    }
+    if (guess.length > MAX_GUESS_RAW_LENGTH) {
+      throw new HttpError(400, 'Guess must be between 1 and 60 characters');
+    }
+
+    if (!checkRateLimit(`guess:${playerId}`, 5, 1000)) {
+      return jsonError(429, 'Too many requests');
     }
 
     const room = await getRoomByCode(roomCode);

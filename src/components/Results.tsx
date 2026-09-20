@@ -22,7 +22,7 @@ export default function Results({ players, isHost, onPlayAgain }: ResultsProps) 
   const winners = sorted.filter((p) => p.score === winner?.score);
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-6 py-8">
+    <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Results</h1>
         {winner && (

@@ -23,7 +23,7 @@ export default function Game({
   const drawer = players.find((p) => p.id === room.current_drawer_id) ?? null;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 py-6">
+    <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-bold">Round {room.round_number}</h1>
         <Timer endsAt={room.round_end_time} onExpire={onExpire} />
@@ -32,22 +32,30 @@ export default function Game({
       <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
 
       {isDrawer ? (
-        <div className="flex flex-col gap-3">
-          <div className="rounded-xl border border-[var(--primary)] bg-[var(--primary)]/10 px-4 py-3 text-center">
-            <p className="text-sm text-[var(--muted-foreground)]">Draw:</p>
-            <p className="text-2xl font-bold text-[var(--primary)]">{word ?? '…'}</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+          <div className="flex flex-col gap-3">
+            <div className="rounded-xl border border-[var(--primary)] bg-[var(--primary)]/10 px-4 py-3 text-center">
+              <p className="text-sm text-[var(--muted-foreground)]">Draw:</p>
+              <p className="text-2xl font-bold text-[var(--primary)]">{word ?? '…'}</p>
+            </div>
+            <EmojiCanvas emojis={canvas} />
           </div>
           <EmojiPicker value={canvas} onChange={onDraw} />
-          <EmojiCanvas emojis={canvas} />
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <p className="text-center text-[var(--muted-foreground)]">
-            {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
-          </p>
-          <EmojiCanvas emojis={canvas} />
-          <Chat messages={messages} players={players} />
-          <GuessInput onSubmit={onGuess} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+          <div className="flex flex-col gap-3">
+            <p className="text-center text-[var(--muted-foreground)]">
+              {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
+            </p>
+            <EmojiCanvas emojis={canvas} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <Chat messages={messages} players={players} />
+            <div className="sticky bottom-0 z-10 -mx-4 bg-[var(--background)]/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+              <GuessInput onSubmit={onGuess} />
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useRoom } from '@/hooks/useRoom';
 import { api } from '@/lib/api';
 import { getPlayerId } from '@/lib/player';
-import { ADVANCE_GRACE_MS } from '@/lib/constants';
+import { ADVANCE_GRACE_MS, DRAWER_ABSENT_MS } from '@/lib/constants';
+import type { Player } from '@/lib/types';
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
 import Results from '@/components/Results';
@@ -111,6 +112,46 @@ export default function RoomClient({ code }: { code: string }) {
       }
     }, ADVANCE_GRACE_MS);
   };
+
+  // Keep the latest players list in a ref so the drawer-left timer below can read it
+  // at fire time without needing to reset on every player object update (e.g. score
+  // changes), which would otherwise keep clearing/re-arming the timeout.
+  const playersRef = useRef<Player[]>(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  const advancedDrawerLeftRoundRef = useRef<number | null>(null);
+  const roomStatus = room?.status ?? null;
+  const drawerId = room?.current_drawer_id ?? null;
+  const roundNumber = room?.round_number ?? null;
+  const meId = me?.id ?? null;
+
+  // Drawer-left detection: if the current drawer is continuously absent from Presence
+  // for longer than DRAWER_ABSENT_MS, the lowest-turn_order online player advances the
+  // round. Guarded on `me` being in onlineIds first, since onlineIds is empty until
+  // Presence syncs on initial load (otherwise every client would think the drawer is
+  // absent and skip the turn immediately).
+  useEffect(() => {
+    if (roomStatus !== 'playing' || !drawerId || !meId || roundNumber === null) return;
+    if (!onlineIds.has(meId)) return;
+    if (onlineIds.has(drawerId)) return;
+    if (advancedDrawerLeftRoundRef.current === roundNumber) return;
+
+    const round = roundNumber;
+    const timer = setTimeout(() => {
+      const onlinePlayers = playersRef.current.filter((p) => onlineIds.has(p.id));
+      if (onlinePlayers.length === 0) return;
+      const lowest = onlinePlayers.reduce((a, b) => (a.turn_order < b.turn_order ? a : b));
+      if (lowest.id !== meId) return;
+      advancedDrawerLeftRoundRef.current = round;
+      api.advance({ roomCode: code, playerId: meId, reason: 'drawer_left' }).catch(() => {
+        // Expected to fail if someone else already advanced; swallow.
+      });
+    }, DRAWER_ABSENT_MS);
+
+    return () => clearTimeout(timer);
+  }, [roomStatus, drawerId, roundNumber, onlineIds, meId, code]);
 
   if (loading) {
     return <main className="gutter flex min-h-screen items-center justify-center text-lg opacity-70">Loading room...</main>;

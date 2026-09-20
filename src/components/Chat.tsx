@@ -25,7 +25,7 @@ export default function Chat({ messages, players }: ChatProps) {
   return (
     <div className="flex h-48 w-full flex-col gap-1 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-2 sm:h-64">
       {visible.length === 0 && (
-        <p className="text-center text-sm text-white/40">No messages yet.</p>
+        <p className="m-auto text-center text-sm text-white/40">No guesses yet</p>
       )}
       {visible.map((m) =>
         m.type === 'system' ? (

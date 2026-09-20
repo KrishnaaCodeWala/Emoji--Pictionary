@@ -13,7 +13,7 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
   const canStart = players.length >= MIN_PLAYERS;
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-6 py-8">
+    <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Lobby</h1>
         <p className="text-[var(--muted-foreground)]">Share the code and wait for everyone to join.</p>

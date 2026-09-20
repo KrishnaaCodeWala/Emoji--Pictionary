@@ -12,9 +12,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const faviconSvg =
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
+  "<text x='50' y='72' font-size='72' text-anchor='middle'>🎨</text>" +
+  "</svg>";
+
 export const metadata: Metadata = {
   title: "Emoji Pictionary",
   description: "Draw with emoji, guess with friends — real-time multiplayer Pictionary.",
+  icons: {
+    icon: `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
