@@ -12,7 +12,7 @@ export interface ResultsProps {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function Results({ players, isHost, onPlayAgain, mode, reveals }: ResultsProps) {
+export default function Results({ players, isHost, onPlayAgain, mode, reveals, chains }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   // Compute shared ranks (ties share rank).
@@ -28,11 +28,15 @@ export default function Results({ players, isHost, onPlayAgain, mode, reveals }:
   const winner = sorted[0];
   const winners = sorted.filter((p) => p.score === winner?.score);
 
+  // Relay is about the album, not the leaderboard: scores default to 0, so the
+  // scoreboard is hidden (rather than announcing a hollow "everyone wins!" tie).
+  const isRelayNoScores = mode === 'relay' && sorted.every((p) => p.score === 0);
+
   return (
     <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Results</h1>
-        {winner && (
+        {winner && !isRelayNoScores && (
           <p className="mt-1 text-[var(--muted-foreground)]">
             {winners.length > 1
               ? `It's a tie between ${winners.map((w) => w.nickname).join(', ')}!`
@@ -41,20 +45,40 @@ export default function Results({ players, isHost, onPlayAgain, mode, reveals }:
         )}
       </div>
 
-      <ol className="flex flex-col gap-2">
-        {sorted.map((p, i) => (
-          <li
-            key={p.id}
-            className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-          >
-            <span className="w-8 shrink-0 text-center text-lg">
-              {ranks[i] <= 3 ? MEDALS[ranks[i] - 1] : `#${ranks[i]}`}
-            </span>
-            <span className="truncate font-medium">{p.nickname}</span>
-            <span className="ml-auto font-semibold text-[var(--primary)]">{p.score}</span>
-          </li>
-        ))}
-      </ol>
+      {mode === 'relay' && chains && chains.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+            Chains
+          </h2>
+          <ol className="flex flex-col gap-2">
+            {chains.map((c) => (
+              <li
+                key={c.chainIndex}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              >
+                {`${c.originNickname ?? 'Someone'}: '${c.firstPhrase}' became '${c.lastGuess}'`}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {!isRelayNoScores && (
+        <ol className="flex flex-col gap-2">
+          {sorted.map((p, i) => (
+            <li
+              key={p.id}
+              className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+            >
+              <span className="w-8 shrink-0 text-center text-lg">
+                {ranks[i] <= 3 ? MEDALS[ranks[i] - 1] : `#${ranks[i]}`}
+              </span>
+              <span className="truncate font-medium">{p.nickname}</span>
+              <span className="ml-auto font-semibold text-[var(--primary)]">{p.score}</span>
+            </li>
+          ))}
+        </ol>
+      )}
 
       {mode === 'charades' && reveals && reveals.length > 0 && (
         <div>

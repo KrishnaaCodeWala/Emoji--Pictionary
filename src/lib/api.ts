@@ -39,12 +39,21 @@ async function getJson<TRes>(url: string): Promise<TRes> {
 }
 
 export const api = {
-  // TODO (Track B): v3 relay
-  relayTask: (_roomCode: string, _playerId: string): Promise<RelayTaskRes> => Promise.reject(new Error('Not implemented')),
-  relaySubmit: (_b: RelaySubmitReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
-  relayAdvance: (_b: RelayAdvanceReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
-  relayAlbum: (_roomCode: string, _playerId: string): Promise<AlbumChainRes> => Promise.reject(new Error('Not implemented')),
-  albumAdvance: (_b: AlbumAdvanceReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
+  // v3 relay
+  relayTask: (roomCode: string, playerId: string): Promise<RelayTaskRes> =>
+    getJson<RelayTaskRes>(
+      `/api/relay/task?roomCode=${encodeURIComponent(roomCode)}&playerId=${encodeURIComponent(playerId)}`,
+    ),
+  relaySubmit: (b: RelaySubmitReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/relay/submit', b),
+  relayAdvance: (b: RelayAdvanceReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/relay/advance', b),
+  relayAlbum: (roomCode: string, playerId: string): Promise<AlbumChainRes> =>
+    getJson<AlbumChainRes>(
+      `/api/relay/album?roomCode=${encodeURIComponent(roomCode)}&playerId=${encodeURIComponent(playerId)}`,
+    ),
+  albumAdvance: (b: AlbumAdvanceReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/relay/album-advance', b),
   setMode: (b: SetModeReq): Promise<OkRes> =>
     postJson<OkRes>('/api/rooms/mode', b),
   revealHint: (b: RevealHintReq): Promise<OkRes> =>

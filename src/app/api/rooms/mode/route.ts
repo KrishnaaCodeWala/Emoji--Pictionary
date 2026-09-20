@@ -4,6 +4,10 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ALL_PROMPT_KINDS } from '@/lib/constants';
 import type { SetModeReq, OkRes, RoomSettings, PromptKind } from '@/lib/types';
 
+function isValidTimer(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 15 && value <= 180;
+}
+
 export async function POST(req: Request) {
   try {
     let body: unknown;
@@ -21,7 +25,7 @@ export async function POST(req: Request) {
     if (typeof playerId !== 'string' || playerId.trim().length === 0) {
       throw new HttpError(400, 'playerId is required');
     }
-    if (mode !== 'classic' && mode !== 'charades') {
+    if (mode !== 'classic' && mode !== 'charades' && mode !== 'relay') {
       throw new HttpError(400, 'Invalid mode');
     }
 
@@ -50,6 +54,21 @@ export async function POST(req: Request) {
       rounds = settings.rounds;
     }
 
+    let relayTimers: RoomSettings['relayTimers'] | undefined;
+    if (settings?.relayTimers !== undefined) {
+      const t = settings.relayTimers;
+      if (
+        typeof t !== 'object' ||
+        t === null ||
+        !isValidTimer(t.write) ||
+        !isValidTimer(t.draw) ||
+        !isValidTimer(t.guess)
+      ) {
+        throw new HttpError(400, 'Invalid settings.relayTimers');
+      }
+      relayTimers = { write: t.write, draw: t.draw, guess: t.guess };
+    }
+
     const room = await getRoomByCode(roomCode.trim().toUpperCase());
 
     if (room.status !== 'lobby') {
@@ -62,6 +81,7 @@ export async function POST(req: Request) {
     const nextSettings: RoomSettings = {};
     if (rounds !== undefined) nextSettings.rounds = rounds;
     if (mode === 'charades' && kinds !== undefined) nextSettings.kinds = kinds;
+    if (mode === 'relay' && relayTimers !== undefined) nextSettings.relayTimers = relayTimers;
 
     const admin = getSupabaseAdmin();
     const { error } = await admin
@@ -75,7 +95,7 @@ export async function POST(req: Request) {
       mode === 'charades'
         ? ` (${(kinds ?? [...ALL_PROMPT_KINDS]).map((k) => plural[k]).join(', ')})`
         : '';
-    const label = mode === 'charades' ? `Charades${kindsLabel}` : 'Classic';
+    const label = mode === 'charades' ? `Charades${kindsLabel}` : mode === 'relay' ? 'Canvas Relay' : 'Classic';
 
     const { error: msgError } = await admin.from('messages').insert({
       room_id: room.id,

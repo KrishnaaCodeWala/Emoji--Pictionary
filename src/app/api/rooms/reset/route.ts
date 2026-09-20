@@ -42,6 +42,10 @@ export async function POST(req: Request) {
         current_drawer_id: null,
         current_word: null,
         round_end_time: null,
+        relay_phase: null,
+        relay_step: 0,
+        album_chain: null,
+        album_step: null,
       })
       .eq('id', room.id);
     if (roomError) throw new HttpError(500, roomError.message);

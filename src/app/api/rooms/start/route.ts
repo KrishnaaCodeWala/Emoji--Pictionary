@@ -1,7 +1,8 @@
 import { jsonOk, jsonError, handleApiError } from '@/lib/http';
 import { getRoomByCode, startNextTurn } from '@/lib/game';
+import { startRelay } from '@/lib/relay';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { MIN_PLAYERS } from '@/lib/constants';
+import { MIN_PLAYERS, MAX_PLAYERS } from '@/lib/constants';
 import type { StartRoomReq, OkRes } from '@/lib/types';
 
 export async function POST(req: Request) {
@@ -40,8 +41,15 @@ export async function POST(req: Request) {
     if ((count ?? 0) < MIN_PLAYERS) {
       return jsonError(400, `Need at least ${MIN_PLAYERS} players`);
     }
+    if ((count ?? 0) > MAX_PLAYERS) {
+      return jsonError(400, `Room may have at most ${MAX_PLAYERS} players`);
+    }
 
-    await startNextTurn(room.id);
+    if (room.mode === 'relay') {
+      await startRelay(room.id);
+    } else {
+      await startNextTurn(room.id);
+    }
 
     return jsonOk<OkRes>({ ok: true });
   } catch (err) {

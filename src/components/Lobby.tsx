@@ -1,6 +1,6 @@
 'use client';
 import type { GameMode, Player, RoomPublic, RoomSettings } from '@/lib/types';
-import { MIN_PLAYERS } from '@/lib/constants';
+import { MIN_PLAYERS, RELAY_MIN_PLAYERS_HINT } from '@/lib/constants';
 import RoomCodeBadge from './RoomCodeBadge';
 import PlayerList from './PlayerList';
 import ModePicker from './ModePicker';
@@ -38,6 +38,9 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
           Players ({players.length})
         </h2>
         <PlayerList players={players} onlineIds={onlineIds} hostId={room.host_player_id} meId={me?.id ?? null} />
+        {mode === 'relay' && players.length < RELAY_MIN_PLAYERS_HINT && (
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">Relay is best with 3+ players</p>
+        )}
       </div>
 
       {error && (

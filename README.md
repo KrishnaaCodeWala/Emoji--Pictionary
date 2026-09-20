@@ -59,6 +59,12 @@ everyone else):
   categories are in play (at least one stays on) and how many rounds per player. The actor can
   reveal hints (year, genre, word count, first letters) at the cost of some guesser points; once
   a round resolves, a poster + title + year reveal is shown to everyone before the next round.
+- **Canvas Relay**: a Gartic-style chain game. Everyone secretly writes a phrase, then the
+  canvas is passed around: draw the phrase you're handed, then guess the drawing you're
+  handed, alternating until every chain has been through every player. The host then walks
+  everyone through the finished albums (phrase -> drawing -> guess -> ...) one card at a time.
+  Timers are adjustable in the lobby (Quick / Normal / Relaxed); best with 3+ players (2 is
+  allowed, but chains are short).
 
 To enable Dumb Charades on a fresh project:
 
@@ -70,6 +76,11 @@ To enable Dumb Charades on a fresh project:
 The seed catalog is a static, hand-curated list. To later import a live catalog from TMDB
 (movies/series) or RAWG (games) instead, see the "Later: replacing the seed with real
 catalogs" section of `BUILD_PLAN_V2.md`.
+
+To enable Canvas Relay on a fresh project:
+
+1. Run `supabase/migrations/003_relay.sql` in the Supabase SQL editor (adds the relay phase
+   columns to `rooms`, the `chains`/`chain_steps` tables, and updates the `rooms_public` view).
 
 ## Deploy to Vercel
 

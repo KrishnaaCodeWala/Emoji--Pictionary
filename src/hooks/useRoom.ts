@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
-import { ROOM_POLL_MS, REVEAL_DURATION_MS, SYS_HINTS_PREFIX, SYS_REVEAL_PREFIX } from '@/lib/constants';
+import {
+  ROOM_POLL_MS, REVEAL_DURATION_MS, SYS_HINTS_PREFIX, SYS_REVEAL_PREFIX, SYS_RELAY_PREFIX, SYS_CHAIN_PREFIX,
+} from '@/lib/constants';
 import type { ChainSummary, Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 
 function parseHints(content: string): PublicHints | null {
@@ -22,8 +24,33 @@ function parseReveal(content: string): RevealPayload | null {
   }
 }
 
+function parseChain(content: string): ChainSummary | null {
+  try {
+    return JSON.parse(content.slice(SYS_CHAIN_PREFIX.length)) as ChainSummary;
+  } catch {
+    return null;
+  }
+}
+
 function isStructuredSystemMessage(m: Message): boolean {
-  return m.type === 'system' && (m.content.startsWith(SYS_HINTS_PREFIX) || m.content.startsWith(SYS_REVEAL_PREFIX));
+  return (
+    m.type === 'system' &&
+    (m.content.startsWith(SYS_HINTS_PREFIX) ||
+      m.content.startsWith(SYS_REVEAL_PREFIX) ||
+      m.content.startsWith(SYS_RELAY_PREFIX) ||
+      m.content.startsWith(SYS_CHAIN_PREFIX))
+  );
+}
+
+/** Merge a ChainSummary into a list, deduped by chainIndex (last one wins). */
+function upsertChain(prev: ChainSummary[], next: ChainSummary): ChainSummary[] {
+  const idx = prev.findIndex((c) => c.chainIndex === next.chainIndex);
+  if (idx >= 0) {
+    const copy = prev.slice();
+    copy[idx] = next;
+    return copy;
+  }
+  return [...prev, next];
 }
 
 export interface UseRoomResult {
@@ -64,6 +91,8 @@ export function useRoom(roomCode: string): UseRoomResult {
   const [hints, setHints] = useState<PublicHints | null>(null);
   const [reveal, setReveal] = useState<RevealPayload | null>(null);
   const [reveals, setReveals] = useState<RevealPayload[]>([]);
+  const [chains, setChains] = useState<ChainSummary[]>([]);
+  const [systemFeed, setSystemFeed] = useState<Message[]>([]);
 
   const roundNumberRef = useRef<number | null>(null);
   const statusRef = useRef<RoomPublic['status'] | null>(null);
@@ -97,6 +126,8 @@ export function useRoom(roomCode: string): UseRoomResult {
       setHints(null);
       setReveal(null);
       setReveals([]);
+      setChains([]);
+      setSystemFeed([]);
       revealSetAtRef.current = null;
     }
     statusRef.current = r.status;
@@ -155,6 +186,17 @@ export function useRoom(roomCode: string): UseRoomResult {
       } else {
         const msgs = ((messagesRes.data ?? []) as Message[]).slice().reverse();
         setMessages(msgs.filter((m) => !isStructuredSystemMessage(m)));
+        setSystemFeed(msgs.filter((m) => m.type === 'system').slice(-200));
+        {
+          let chainList: ChainSummary[] = [];
+          for (const m of msgs) {
+            if (m.type === 'system' && m.content.startsWith(SYS_CHAIN_PREFIX)) {
+              const parsed = parseChain(m.content);
+              if (parsed) chainList = upsertChain(chainList, parsed);
+            }
+          }
+          setChains(chainList);
+        }
         // Messages aren't tagged by round, so bound the search to messages after the
         // latest plain (non-structured) system message (each turn change inserts one) —
         // that approximates "this round's" emoji_update/hints without a schema change.
@@ -246,6 +288,9 @@ export function useRoom(roomCode: string): UseRoomResult {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
         (payload) => {
           const msg = payload.new as Message;
+          if (msg.type === 'system') {
+            setSystemFeed((prev) => [...prev, msg].slice(-200));
+          }
           if (msg.type === 'emoji_update') {
             setCanvas(msg.content);
           } else if (msg.type === 'system' && msg.content.startsWith(SYS_HINTS_PREFIX)) {
@@ -269,6 +314,12 @@ export function useRoom(roomCode: string): UseRoomResult {
                 return [...prev, parsed];
               });
             }
+          } else if (msg.type === 'system' && msg.content.startsWith(SYS_RELAY_PREFIX)) {
+            // Progress pings only; parsed by useRelay from systemFeed. Never in `messages`,
+            // never triggers a room refetch (would happen on every submit otherwise).
+          } else if (msg.type === 'system' && msg.content.startsWith(SYS_CHAIN_PREFIX)) {
+            const parsed = parseChain(msg.content);
+            if (parsed) setChains((prev) => upsertChain(prev, parsed));
           } else {
             setMessages((prev) => [...prev, msg].slice(-100));
             if (msg.type === 'system') {
@@ -345,8 +396,8 @@ export function useRoom(roomCode: string): UseRoomResult {
     error,
     refetchRoom,
     hints: hints && (hints.roundNumber === undefined || hints.roundNumber === room?.round_number) ? hints : null,
-    chains: [],
-    systemFeed: [],
+    chains,
+    systemFeed,
     reveal,
     reveals,
   };

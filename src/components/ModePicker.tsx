@@ -1,6 +1,26 @@
 'use client';
 import type { GameMode, PromptKind, RoomSettings } from '@/lib/types';
-import { ALL_PROMPT_KINDS, ROUNDS_PER_PLAYER } from '@/lib/constants';
+import { ALL_PROMPT_KINDS, RELAY_TIMER_PRESETS, ROUNDS_PER_PLAYER } from '@/lib/constants';
+
+type RelayPreset = keyof typeof RELAY_TIMER_PRESETS;
+
+const RELAY_PRESET_LABELS: Record<RelayPreset, string> = {
+  quick: 'Quick',
+  normal: 'Normal',
+  relaxed: 'Relaxed',
+};
+
+const RELAY_PRESET_ORDER: RelayPreset[] = ['quick', 'normal', 'relaxed'];
+
+function matchRelayPreset(timers: RoomSettings['relayTimers']): RelayPreset {
+  const entry = RELAY_PRESET_ORDER.find((key) => {
+    const preset = RELAY_TIMER_PRESETS[key];
+    return (
+      timers?.write === preset.write && timers?.draw === preset.draw && timers?.guess === preset.guess
+    );
+  });
+  return entry ?? 'normal';
+}
 
 export interface ModePickerProps {
   mode: GameMode;
@@ -21,14 +41,22 @@ const ROUND_OPTIONS = [1, 2, 3, 4, 5];
 export default function ModePicker({ mode, settings, editable, onChange }: ModePickerProps) {
   const rounds = settings.rounds ?? ROUNDS_PER_PLAYER;
   const kinds = settings.kinds ?? [...ALL_PROMPT_KINDS];
+  const relayPreset = matchRelayPreset(settings.relayTimers);
 
   function selectMode(next: GameMode) {
     if (!editable) return;
     if (next === 'classic') {
       onChange('classic', { rounds });
+    } else if (next === 'relay') {
+      onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[relayPreset] });
     } else {
       onChange('charades', { kinds, rounds });
     }
+  }
+
+  function selectRelayPreset(preset: RelayPreset) {
+    if (!editable) return;
+    onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[preset] });
   }
 
   function toggleKind(kind: PromptKind) {
@@ -84,7 +112,41 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
           <p className="font-semibold">Dumb Charades: movies, series and games</p>
           <p className="text-sm text-[var(--muted-foreground)]">Guess titles from emojis + hints.</p>
         </button>
+        <button
+          type="button"
+          disabled={!editable}
+          onClick={() => selectMode('relay')}
+          aria-pressed={mode === 'relay'}
+          className={`${cardBase} ${mode === 'relay' ? cardOn : cardOff}`}
+        >
+          <p className="font-semibold">Canvas Relay</p>
+          <p className="text-sm text-[var(--muted-foreground)]">Pass the canvas, guess the chain.</p>
+        </button>
       </div>
+
+      {mode === 'relay' && (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-[var(--muted-foreground)]">Timer</span>
+          <div className="flex gap-1">
+            {RELAY_PRESET_ORDER.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                disabled={!editable}
+                onClick={() => selectRelayPreset(preset)}
+                aria-pressed={relayPreset === preset}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                  relayPreset === preset
+                    ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
+                }`}
+              >
+                {RELAY_PRESET_LABELS[preset]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {mode === 'charades' && (
         <div className="flex flex-wrap gap-2">
@@ -110,6 +172,7 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
         </div>
       )}
 
+      {mode !== 'relay' && (
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[var(--muted-foreground)]">Rounds per player</span>
         <div className="flex gap-1">
@@ -131,6 +194,7 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

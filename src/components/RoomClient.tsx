@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRoom } from '@/hooks/useRoom';
+import { useRelay } from '@/hooks/useRelay';
 import { api } from '@/lib/api';
 import { getPlayerId } from '@/lib/player';
 import { ADVANCE_GRACE_MS, DRAWER_ABSENT_MS } from '@/lib/constants';
@@ -15,8 +16,11 @@ export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
   const {
     room, players, messages, canvas, me, isHost, isDrawer, onlineIds, loading, error,
-    hints, reveal, reveals,
+    hints, reveal, reveals, chains, systemFeed,
   } = useRoom(code);
+
+  // Always called (hooks order): internally inert unless room.mode === 'relay'.
+  const relay = useRelay(code, room, me, systemFeed);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -117,6 +121,9 @@ export default function RoomClient({ code }: { code: string }) {
 
   const handleExpire = () => {
     if (!me || !room) return;
+    // Relay has its own timeout-advance path (handleRelayExpire); the classic/charades
+    // advance API is a different shape and must never fire in relay mode.
+    if (room.mode === 'relay') return;
     const callAdvance = () => {
       api.advance({ roomCode: code, playerId: me.id, reason: 'timeout' }).catch(() => {
         // Expected to fail if someone else already advanced; swallow.
@@ -174,6 +181,29 @@ export default function RoomClient({ code }: { code: string }) {
     return () => clearTimeout(timer);
   }, [roomStatus, drawerId, roundNumber, onlineIds, meId, code]);
 
+  // Relay: mirrors the drawer-left pattern above, but relay has no single actor — the
+  // lowest-turn_order online player calls /api/relay/advance after the grace period.
+  const relayStepRef = useRef<number | null>(null);
+  useEffect(() => {
+    relayStepRef.current = room?.relay_step ?? null;
+  }, [room?.relay_step]);
+
+  const handleRelayExpire = () => {
+    if (!me || !room || room.mode !== 'relay') return;
+    const stepAtExpire = room.relay_step;
+    const onlinePlayers = players.filter((p) => onlineIds.has(p.id));
+    if (onlinePlayers.length === 0) return;
+    const lowest = onlinePlayers.reduce((a, b) => (a.turn_order < b.turn_order ? a : b));
+    if (lowest.id !== me.id) return;
+    setTimeout(() => {
+      if (relayStepRef.current === stepAtExpire) {
+        api.relayAdvance({ roomCode: code, playerId: me.id }).catch(() => {
+          // Expected to fail if someone else already advanced; swallow.
+        });
+      }
+    }, ADVANCE_GRACE_MS);
+  };
+
   if (loading) {
     return <main className="gutter flex min-h-screen items-center justify-center text-lg opacity-70">Loading room...</main>;
   }
@@ -224,6 +254,8 @@ export default function RoomClient({ code }: { code: string }) {
           reveal={reveal}
           closeFlash={closeFlash}
           onRevealHint={handleRevealHint}
+          relay={room.mode === 'relay' ? relay : undefined}
+          onRelayExpire={room.mode === 'relay' ? handleRelayExpire : undefined}
         />
       )}
       {room.status === 'finished' && (
@@ -233,6 +265,7 @@ export default function RoomClient({ code }: { code: string }) {
           onPlayAgain={handlePlayAgain}
           mode={room.mode}
           reveals={reveals}
+          chains={chains}
         />
       )}
     </div>

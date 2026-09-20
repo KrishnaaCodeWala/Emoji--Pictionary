@@ -1,7 +1,9 @@
 'use client';
+import type { ReactNode } from 'react';
 import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 import type { UseRelayResult } from '@/hooks/useRelay';
 import { ROUNDS_PER_PLAYER } from '@/lib/constants';
+import { pickWord } from '@/lib/words';
 import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
 import EmojiPicker from '../components/EmojiPicker';
@@ -11,6 +13,39 @@ import GuessInput from '../components/GuessInput';
 import ActorPanel from './charades/ActorPanel';
 import GuesserPanel from './charades/GuesserPanel';
 import RevealCard from './charades/RevealCard';
+import WritePanel from './relay/WritePanel';
+import DrawPanel from './relay/DrawPanel';
+import GuessPanel from './relay/GuessPanel';
+import WaitingPanel from './relay/WaitingPanel';
+import AlbumViewer from './relay/AlbumViewer';
+import ProgressPill from './relay/ProgressPill';
+
+/** "{word} at a wedding" style random writing prompts for the relay "Inspire me" button. */
+const RELAY_INSPIRE_TEMPLATES = [
+  '{word} at a wedding',
+  'a {word} learning to dance',
+  '{word} on the moon',
+  'a {word} ordering coffee',
+  '{word} stuck in traffic',
+  'a {word} playing chess',
+  'a {word} on a first date',
+  '{word} in outer space',
+];
+
+function inspireRelayPhrase(): string {
+  const word = pickWord();
+  const template =
+    RELAY_INSPIRE_TEMPLATES[Math.floor(Math.random() * RELAY_INSPIRE_TEMPLATES.length)] ??
+    RELAY_INSPIRE_TEMPLATES[0];
+  return template.replace('{word}', word);
+}
+
+const RELAY_PHASE_LABELS: Record<'write' | 'draw' | 'guess' | 'album', string> = {
+  write: 'Write',
+  draw: 'Draw',
+  guess: 'Guess',
+  album: 'Album',
+};
 
 export interface GameProps {
   room: RoomPublic; players: Player[]; me: Player | null; isDrawer: boolean;
@@ -38,10 +73,70 @@ const noop = () => {};
 
 export default function Game({
   room, players, me, isDrawer, canvas, messages, word, onDraw, onGuess, onExpire,
-  prompt, hints, reveal, closeFlash, onRevealHint,
+  prompt, hints, reveal, closeFlash, onRevealHint, relay, onRelayExpire,
 }: GameProps) {
   const drawer = players.find((p) => p.id === room.current_drawer_id) ?? null;
   const totalRounds = players.length * (room.settings?.rounds ?? ROUNDS_PER_PLAYER);
+
+  if (room.mode === 'relay') {
+    if (!relay) {
+      return (
+        <div className="gutter mx-auto flex w-full max-w-3xl items-center justify-center py-20 text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      );
+    }
+
+    const isHost = !!me && me.id === room.host_player_id;
+    const task = relay.task;
+    const phase = task?.phase ?? 'write';
+
+    let body: ReactNode;
+    if (!task) {
+      body = <p className="text-center text-[var(--muted-foreground)]">Loading...</p>;
+    } else if (task.phase === 'write') {
+      body = task.submitted ? (
+        <WaitingPanel progress={relay.progress} phaseLabel="Write" />
+      ) : (
+        <WritePanel onSubmit={relay.submit} submitted={task.submitted} onInspire={inspireRelayPhrase} />
+      );
+    } else if (task.phase === 'draw') {
+      body = task.submitted ? (
+        <WaitingPanel progress={relay.progress} phaseLabel="Draw" />
+      ) : (
+        <DrawPanel phrase={task.input?.content ?? ''} onSubmit={relay.submit} submitted={task.submitted} />
+      );
+    } else if (task.phase === 'guess') {
+      body = task.submitted ? (
+        <WaitingPanel progress={relay.progress} phaseLabel="Guess" />
+      ) : (
+        <GuessPanel canvas={task.input?.content ?? ''} onSubmit={relay.submit} submitted={task.submitted} />
+      );
+    } else {
+      body = <AlbumViewer album={relay.album} isHost={isHost} onNext={relay.albumAdvance} />;
+    }
+
+    return (
+      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-bold">
+            Step {room.relay_step + 1} of {players.length} &middot; {RELAY_PHASE_LABELS[phase]}
+          </h1>
+          {phase !== 'album' && <Timer endsAt={room.round_end_time} onExpire={onRelayExpire ?? noop} />}
+        </div>
+
+        <ProgressPill progress={relay.progress} />
+
+        {relay.error && (
+          <p className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]" role="alert">
+            {relay.error}
+          </p>
+        )}
+
+        {body}
+      </div>
+    );
+  }
 
   if (room.mode === 'charades') {
     return (
