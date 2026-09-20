@@ -2,6 +2,7 @@
 import type {
   AdvanceReq, ApiError, CreateRoomReq, CreateRoomRes, DrawReq, GuessReq, GuessRes,
   JoinRoomReq, JoinRoomRes, OkRes, ResetRoomReq, StartRoomReq, WordRes,
+  RevealHintReq, SetModeReq,
 } from './types';
 
 async function parseJson(res: Response): Promise<unknown> {
@@ -37,6 +38,9 @@ async function getJson<TRes>(url: string): Promise<TRes> {
 }
 
 export const api = {
+  // TODO (Track B): v2
+  setMode: (_b: SetModeReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
+  revealHint: (_b: RevealHintReq): Promise<OkRes> => Promise.reject(new Error('Not implemented')),
   createRoom: (b: CreateRoomReq): Promise<CreateRoomRes> =>
     postJson<CreateRoomRes>('/api/rooms/create', b),
   joinRoom: (b: JoinRoomReq): Promise<JoinRoomRes> =>

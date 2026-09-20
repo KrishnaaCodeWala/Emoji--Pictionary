@@ -1,5 +1,5 @@
 'use client';
-import type { Message, Player, RoomPublic } from '@/lib/types';
+import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
 import EmojiPicker from '../components/EmojiPicker';
@@ -15,6 +15,14 @@ export interface GameProps {
   onDraw: (emojis: string) => void;
   onGuess: (guess: string) => void;
   onExpire: () => void;
+  // ---- v2 (charades); all optional so classic callers are unchanged ----
+  /** Actor's prompt (charades, isDrawer only). */
+  prompt?: Prompt | null;
+  hints?: PublicHints | null;
+  reveal?: RevealPayload | null;
+  /** Toggles each time the guesser's last guess was a near miss. */
+  closeFlash?: number;
+  onRevealHint?: (hint: HintKey) => void;
 }
 
 export default function Game({

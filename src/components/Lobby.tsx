@@ -1,5 +1,5 @@
 'use client';
-import type { Player, RoomPublic } from '@/lib/types';
+import type { GameMode, Player, RoomPublic, RoomSettings } from '@/lib/types';
 import { MIN_PLAYERS } from '@/lib/constants';
 import RoomCodeBadge from './RoomCodeBadge';
 import PlayerList from './PlayerList';
@@ -7,6 +7,8 @@ import PlayerList from './PlayerList';
 export interface LobbyProps {
   room: RoomPublic; players: Player[]; me: Player | null; isHost: boolean;
   onlineIds: Set<string>; onStart: () => void; starting?: boolean; error?: string | null;
+  /** v2: host changes mode/settings (Track D renders ModePicker). */
+  onSetMode?: (mode: GameMode, settings: RoomSettings) => void;
 }
 
 export default function Lobby({ room, players, me, isHost, onlineIds, onStart, starting, error }: LobbyProps) {

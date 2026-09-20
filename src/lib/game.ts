@@ -42,7 +42,11 @@ async function insertSystemMessage(roomId: string, content: string) {
   if (error) throw new HttpError(500, error.message);
 }
 
-/** Rotate drawer, pick word, bump round, or finish the game. */
+/**
+ * Rotate drawer, pick word, bump round, or finish the game.
+ * TODO (Track A, v2): use pickPrompt() from ./prompts for both modes, store current_prompt_id,
+ * reset revealed_hints, set round_started_at, and push the prompt id into settings.usedPromptIds.
+ */
 export async function startNextTurn(roomId: string): Promise<void> {
   const admin = getSupabaseAdmin();
 
@@ -98,6 +102,14 @@ export async function startNextTurn(roomId: string): Promise<void> {
     roomId,
     `Round ${nextRoundNumber} — ${nextDrawer.nickname} is drawing`,
   );
+}
+
+/**
+ * TODO (Track A, v2): resolve the round for charades (correct guess or timeout): insert the
+ * 'reveal:' system message (RevealPayload) before startNextTurn. Scoring per BUILD_PLAN_V2.
+ */
+export async function resolveRoundReveal(_roomId: string, _guesserNickname: string | null): Promise<void> {
+  // no-op until Track A implements it
 }
 
 /**

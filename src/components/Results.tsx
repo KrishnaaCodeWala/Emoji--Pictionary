@@ -1,7 +1,11 @@
 'use client';
-import type { Player } from '@/lib/types';
+import type { GameMode, Player, RevealPayload } from '@/lib/types';
 
-export interface ResultsProps { players: Player[]; isHost: boolean; onPlayAgain: () => void }
+export interface ResultsProps {
+  players: Player[]; isHost: boolean; onPlayAgain: () => void;
+  /** v2 */
+  mode?: GameMode; reveals?: RevealPayload[];
+}
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 

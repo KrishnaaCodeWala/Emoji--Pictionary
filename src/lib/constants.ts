@@ -13,3 +13,17 @@ export const ADVANCE_GRACE_MS = 3000;
 export const DRAWER_ABSENT_MS = 5000;
 /** fallback poll interval for rooms_public while a game is not finished */
 export const ROOM_POLL_MS = 5000;
+
+// ---- v2: charades ----
+export const HINT_COST = 2;
+export const MIN_GUESSER_POINTS = 4;
+export const SPEED_BONUS_POINTS = 2;
+export const SPEED_BONUS_WINDOW_S = 20;
+export const REVEAL_DURATION_MS = 4000;
+export const FUZZY_MIN_TITLE_LENGTH = 6;
+export const FUZZY_MAX_DISTANCE = 2;
+export const ALL_PROMPT_KINDS = ['movie', 'series', 'game'] as const;
+export const HINT_KEYS = ['year', 'genre', 'wordCount', 'firstLetters'] as const;
+/** Prefixes for structured system messages. Client parses these. */
+export const SYS_HINTS_PREFIX = 'hints:';
+export const SYS_REVEAL_PREFIX = 'reveal:';

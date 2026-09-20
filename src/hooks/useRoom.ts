@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
 import { ROOM_POLL_MS } from '@/lib/constants';
-import type { Message, Player, RoomPublic } from '@/lib/types';
+import type { Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
 
 export interface UseRoomResult {
   room: RoomPublic | null;
@@ -19,6 +19,13 @@ export interface UseRoomResult {
   loading: boolean;
   error: string | null;
   refetchRoom: () => Promise<void>;
+  // ---- v2 (Track B) ----
+  /** Latest 'hints:' system message for the current round, or null. */
+  hints: PublicHints | null;
+  /** Latest 'reveal:' payload; cleared when round_number changes. */
+  reveal: RevealPayload | null;
+  /** All reveals seen this game, oldest first (for Results). */
+  reveals: RevealPayload[];
 }
 
 export function useRoom(roomCode: string): UseRoomResult {
@@ -232,5 +239,8 @@ export function useRoom(roomCode: string): UseRoomResult {
     loading,
     error,
     refetchRoom,
+    hints: null,
+    reveal: null,
+    reveals: [],
   };
 }
