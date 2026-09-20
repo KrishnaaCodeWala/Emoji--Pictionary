@@ -40,7 +40,10 @@ export default function Game({
             </div>
             <EmojiCanvas emojis={canvas} />
           </div>
-          <EmojiPicker value={canvas} onChange={onDraw} />
+          <div className="flex flex-col gap-3">
+            <EmojiPicker value={canvas} onChange={onDraw} />
+            <Chat messages={messages} players={players} />
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">

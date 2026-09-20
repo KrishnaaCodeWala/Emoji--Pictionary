@@ -26,12 +26,12 @@ export default function GuessInput({ onSubmit, disabled }: GuessInputProps) {
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
         placeholder="Type your guess..."
-        className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm outline-none placeholder:text-white/40 focus:border-indigo-400 disabled:opacity-40"
+        className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary disabled:opacity-40"
       />
       <button
         type="submit"
         disabled={disabled || !text.trim()}
-        className="shrink-0 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+        className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
       >
         Send
       </button>

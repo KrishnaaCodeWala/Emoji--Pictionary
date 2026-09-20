@@ -23,17 +23,17 @@ export default function Chat({ messages, players }: ChatProps) {
   const visible = messages.filter((m) => m.type === 'guess' || m.type === 'system');
 
   return (
-    <div className="flex h-48 w-full flex-col gap-1 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-2 sm:h-64">
+    <div className="flex h-48 w-full flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-surface p-2 sm:h-64">
       {visible.length === 0 && (
-        <p className="m-auto text-center text-sm text-white/40">No guesses yet</p>
+        <p className="m-auto text-center text-sm text-muted-foreground">No guesses yet</p>
       )}
       {visible.map((m) =>
         m.type === 'system' ? (
-          <p key={m.id} className="text-center text-xs italic text-amber-300/90">
+          <p key={m.id} className="text-center text-xs italic text-primary">
             {m.content}
           </p>
         ) : (
-          <p key={m.id} className="text-sm text-white/90 break-words">
+          <p key={m.id} className="text-sm text-foreground break-words">
             <span className="font-semibold">{nicknameFor(m.player_id)}:</span> {m.content}
           </p>
         ),

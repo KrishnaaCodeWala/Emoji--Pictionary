@@ -55,7 +55,7 @@ export default function Timer({ endsAt, onExpire }: TimerProps) {
   return (
     <div
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
-        warning ? 'bg-red-500/20 text-red-300 animate-pulse' : 'bg-white/10 text-white/80'
+        warning ? 'bg-danger/15 text-danger animate-pulse' : 'bg-surface-muted text-foreground'
       }`}
       aria-live="polite"
     >
