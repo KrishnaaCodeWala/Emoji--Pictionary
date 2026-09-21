@@ -11,11 +11,14 @@ import {
   MIN_GUESSER_POINTS,
   SPEED_BONUS_POINTS,
   SPEED_BONUS_WINDOW_S,
+  ROUND_INTRO_MS,
+  STREAK_BONUS_MAX,
+  SYS_SCORE_PREFIX,
 } from './constants';
 import { pickPrompt, getPromptById } from './prompts';
 import { SYS_REVEAL_PREFIX, SYS_HINTS_PREFIX } from './constants';
 import { publicHints } from './prompts';
-import type { RevealPayload } from './types';
+import type { RevealPayload, ScoreEvent } from './types';
 
 /** Full room row (incl. current_word). Throws HttpError(404) if missing. */
 export async function getRoomByCode(code: string): Promise<RoomRow> {
@@ -51,6 +54,11 @@ async function getPlayersOrdered(roomId: string): Promise<Player[]> {
   return (data ?? []) as Player[];
 }
 
+/** Returns only active (not left) non-spectator players. */
+function activePlayers(players: Player[]): Player[] {
+  return players.filter((p) => p.left_at == null && p.role !== 'spectator');
+}
+
 async function insertSystemMessage(roomId: string, content: string) {
   const admin = getSupabaseAdmin();
   const { error } = await admin.from('messages').insert({
@@ -64,11 +72,13 @@ async function insertSystemMessage(roomId: string, content: string) {
 
 /**
  * Rotate drawer, pick prompt (classic word or charades prompt), bump round, or finish the game.
+ * Also sets round_intro_until so all clients show the 3-2-1 overlay before the timer starts.
  */
 export async function startNextTurn(roomId: string): Promise<void> {
   const admin = getSupabaseAdmin();
 
-  const [room, players] = await Promise.all([getRoomById(roomId), getPlayersOrdered(roomId)]);
+  const [room, allPlayers] = await Promise.all([getRoomById(roomId), getPlayersOrdered(roomId)]);
+  const players = activePlayers(allPlayers);
 
   if (players.length === 0) {
     throw new HttpError(400, 'No players in room');
@@ -86,9 +96,26 @@ export async function startNextTurn(roomId: string): Promise<void> {
         current_word: null,
         current_prompt_id: null,
         round_end_time: null,
+        round_intro_until: null,
       })
       .eq('id', roomId);
     if (error) throw new HttpError(500, error.message);
+
+    // Write to game_results for players with auth_uid
+    const authPlayers = players.filter(p => p.auth_uid != null);
+    if (authPlayers.length > 0) {
+      // Sort to get placement
+      const sorted = [...players].sort((a, b) => b.score - a.score);
+      const results = authPlayers.map(p => ({
+        room_id: roomId,
+        user_id: p.auth_uid,
+        mode: room.mode,
+        placement: sorted.findIndex(sp => sp.id === p.id) + 1,
+        points: p.score
+      }));
+      await admin.from('game_results').insert(results);
+    }
+
     await insertSystemMessage(roomId, 'Game over');
     return;
   }
@@ -96,8 +123,11 @@ export async function startNextTurn(roomId: string): Promise<void> {
   const nextDrawer = players[room.round_number % players.length];
   const { answer, promptId } = await pickPrompt(room);
   const nextRoundNumber = room.round_number + 1;
-  const roundEndTime = new Date(Date.now() + ROUND_SECONDS * 1000).toISOString();
-  const roundStartedAt = new Date().toISOString();
+
+  // Round intro: 3-2-1 overlay; timer starts after intro ends.
+  const introEnd = new Date(Date.now() + ROUND_INTRO_MS);
+  const roundEndTime = new Date(introEnd.getTime() + ROUND_SECONDS * 1000).toISOString();
+  const roundStartedAt = introEnd.toISOString(); // treat intro-end as round start for speed bonus
 
   const nextSettings: RoomSettings = { ...room.settings };
   if (promptId) {
@@ -115,6 +145,7 @@ export async function startNextTurn(roomId: string): Promise<void> {
       round_started_at: roundStartedAt,
       round_number: nextRoundNumber,
       round_end_time: roundEndTime,
+      round_intro_until: introEnd.toISOString(),
       settings: nextSettings,
     })
     .eq('id', roomId);
@@ -163,7 +194,9 @@ export async function resolveRoundReveal(roomId: string, guesserNickname: string
 
 /**
  * Award points for a correct guess and advance the turn.
- * Returns false if the race guard rejected (round already advanced / someone else scored).
+ * Tracks streaks: guesser's streak increments; drawer and all others reset to 0.
+ * Emits a score: structured message for each scorer.
+ * Returns false if the race guard rejected.
  */
 export async function awardAndAdvance(
   roomId: string,
@@ -173,10 +206,6 @@ export async function awardAndAdvance(
 ): Promise<boolean> {
   const admin = getSupabaseAdmin();
 
-  // Conditional update: only proceed if the round hasn't already been resolved.
-  // Clearing current_word here (rather than rewriting the same value) is what makes this
-  // a real race guard: a concurrent second call's `.eq('current_word', word)` filter will
-  // no longer match once this update commits, so it gets 0 rows back and returns false.
   const { data: updatedRows, error: updateError } = await admin
     .from('rooms')
     .update({ current_word: null })
@@ -202,7 +231,8 @@ export async function awardAndAdvance(
 
   if (room.mode === 'charades') {
     const revealedCount = room.revealed_hints?.length ?? 0;
-    guesserPoints = Math.max(MIN_GUESSER_POINTS, POINTS_GUESSER - HINT_COST * revealedCount);
+    const hintCost = room.settings?.difficulty === 'hard' ? 3 : HINT_COST;
+    guesserPoints = Math.max(MIN_GUESSER_POINTS, POINTS_GUESSER - hintCost * revealedCount);
     if (room.round_started_at) {
       const elapsedS = (Date.now() - new Date(room.round_started_at).getTime()) / 1000;
       if (elapsedS <= SPEED_BONUS_WINDOW_S) {
@@ -212,20 +242,40 @@ export async function awardAndAdvance(
     drawerPoints = POINTS_DRAWER;
   }
 
+  // ---- Streaks ----
+  const guesserStreak = guesser ? Math.min((guesser.streak ?? 0) + 1, 99) : 0;
+  const streakBonus = Math.min(Math.floor(guesserStreak / 2), STREAK_BONUS_MAX);
+  guesserPoints += streakBonus;
+
   if (guesser) {
     const { error } = await admin
       .from('players')
-      .update({ score: guesser.score + guesserPoints })
+      .update({ score: guesser.score + guesserPoints, streak: guesserStreak })
       .eq('id', guesser.id);
     if (error) throw new HttpError(500, error.message);
+
+    // Broadcast score event for the guesser
+    const ev: ScoreEvent = { playerId: guesser.id, delta: guesserPoints, reason: 'guess', streak: guesserStreak };
+    await insertSystemMessage(roomId, SYS_SCORE_PREFIX + JSON.stringify(ev));
   }
 
   if (drawer) {
     const { error } = await admin
       .from('players')
-      .update({ score: drawer.score + drawerPoints })
+      .update({ score: drawer.score + drawerPoints, streak: 0 })
       .eq('id', drawer.id);
     if (error) throw new HttpError(500, error.message);
+
+    const ev: ScoreEvent = { playerId: drawer.id, delta: drawerPoints, reason: 'draw', streak: 0 };
+    await insertSystemMessage(roomId, SYS_SCORE_PREFIX + JSON.stringify(ev));
+  }
+
+  // Reset streaks for all other active players
+  const otherIds = players
+    .filter((p) => p.id !== guesserId && p.id !== drawerId && p.left_at == null && p.streak > 0)
+    .map((p) => p.id);
+  if (otherIds.length > 0) {
+    await admin.from('players').update({ streak: 0 }).in('id', otherIds);
   }
 
   await resolveRoundReveal(roomId, guesser ? guesser.nickname : null);

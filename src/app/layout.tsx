@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Special_Elite, Rye, Caveat } from "next/font/google";
 import "./globals.css";
+import HeaderAuth from "@/components/HeaderAuth";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -47,7 +48,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         data-theme="studio"
         className="min-h-full flex flex-col font-sans transition-colors duration-500"
       >
-        <div className="flex-1">{children}</div>
+        <header className="w-full flex justify-end p-4 absolute top-0 right-0 z-50">
+          <HeaderAuth />
+        </header>
+        <div className="flex-1 pt-12">{children}</div>
         <footer className="gutter py-3 text-center text-[11px] text-muted-foreground">
           Posters and cover art via{' '}
           <a href="https://en.wikipedia.org" className="underline" target="_blank" rel="noreferrer">

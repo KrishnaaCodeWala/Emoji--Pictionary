@@ -43,7 +43,6 @@ export const RELAY_DEFAULT_GUESS = '...';
 export const SYS_RELAY_PREFIX = 'relay:';
 export const SYS_CHAIN_PREFIX = 'chain:';
 
-// ---- v4: canvas, emoji picker, themes ----
 export const CANVAS_W = 480;
 export const CANVAS_H = 360;
 export const CANVAS_BRUSHES = [4, 10, 22] as const;
@@ -56,3 +55,34 @@ export const EMOJI_RECENTS_MAX = 24;
 export const HOME_CYCLE_MS = 6000;
 export const THEMES = ['studio', 'theatre', 'sketchbook'] as const;
 export const THEME_FOR_MODE = { classic: 'studio', charades: 'theatre', relay: 'sketchbook' } as const;
+
+// ---- v5 Wave 1: party polish + reliability ----
+/** Duration of the 3-2-1 round intro overlay before the timer starts. */
+export const ROUND_INTRO_MS = 3000;
+/** ms a host must be absent from Presence before migration triggers. */
+export const HOST_ABSENT_MS = 8000;
+/** Max streak bonus points added to correct-guess score. */
+export const STREAK_BONUS_MAX = 3;
+/** Prefix for structured score events broadcast as system messages. */
+export const SYS_SCORE_PREFIX = 'score:';
+/** 48 curated emojis for the avatar picker. */
+export const AVATARS = [
+  '😀','😎','🤩','🥳','😜','🤓','😇','🥸',
+  '🐶','🐱','🐻','🐼','🦊','🐸','🐧','🦄',
+  '🦁','🐯','🐮','🐷','🐙','🦋','🦖','🐲',
+  '🍕','🍔','🌮','🍩','🍦','🎂','🍣','🍜',
+  '⚽','🏀','🎸','🎮','🎲','🎭','🎨','🎯',
+  '🚀','🌈','⚡','🔥','💎','👑','🎉','🌟',
+] as const;
+
+// ---- v5 Wave 2: Content ----
+export const PACKS = [
+  { id: 'everyday', name: 'Everyday Words' },
+  { id: 'animals', name: 'Animals & Nature' },
+  { id: 'food', name: 'Food & Drink' },
+  { id: 'objects', name: 'Objects & Places' },
+  { id: 'movies', name: 'Movies (Lite)' },
+  { id: 'indian', name: 'Indian Pop Culture' },
+  { id: 'party', name: 'Party Words' },
+] as const;
+

@@ -4,8 +4,13 @@ import type { HintKey, InputMode, Prompt, StrokeEvent } from '@/lib/types';
 import { HINT_COST, HINT_KEYS } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import EmojiCanvas from '@/components/EmojiCanvas';
-import EmojiPicker from '@/components/EmojiPicker';
-import DrawCanvas from '@/components/canvas/DrawCanvas';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(() => import('@/components/EmojiPicker'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-surface-muted" />
+});
+const DrawCanvas = dynamic(() => import('@/components/canvas/DrawCanvas'), { ssr: false });
 import PosterFrame from './PosterFrame';
 
 export interface ActorPanelProps {

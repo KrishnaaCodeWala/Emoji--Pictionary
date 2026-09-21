@@ -6,8 +6,9 @@ import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
 import {
   ROOM_POLL_MS, REVEAL_DURATION_MS, SYS_HINTS_PREFIX, SYS_REVEAL_PREFIX, SYS_RELAY_PREFIX, SYS_CHAIN_PREFIX,
+  SYS_SCORE_PREFIX, HOST_ABSENT_MS,
 } from '@/lib/constants';
-import type { ChainSummary, Message, Player, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+import type { ChainSummary, ConnectionState, Message, Player, PublicHints, RevealPayload, RoomPublic, ScoreEvent, ReactionEvent } from '@/lib/types';
 
 function parseHints(content: string): PublicHints | null {
   try {
@@ -33,13 +34,32 @@ function parseChain(content: string): ChainSummary | null {
   }
 }
 
+function parseScore(content: string): ScoreEvent | null {
+  try {
+    return JSON.parse(content.slice(SYS_SCORE_PREFIX.length)) as ScoreEvent;
+  } catch {
+    return null;
+  }
+}
+
+function parseReaction(content: string): ReactionEvent | null {
+  try {
+    return JSON.parse(content.slice('reaction:'.length)) as ReactionEvent;
+  } catch {
+    return null;
+  }
+}
+
 function isStructuredSystemMessage(m: Message): boolean {
   return (
     m.type === 'system' &&
     (m.content.startsWith(SYS_HINTS_PREFIX) ||
       m.content.startsWith(SYS_REVEAL_PREFIX) ||
       m.content.startsWith(SYS_RELAY_PREFIX) ||
-      m.content.startsWith(SYS_CHAIN_PREFIX))
+      m.content.startsWith(SYS_CHAIN_PREFIX) ||
+      m.content.startsWith(SYS_SCORE_PREFIX) ||
+      m.content.startsWith('reaction:') ||
+      m.content.startsWith('kicked:'))
   );
 }
 
@@ -80,6 +100,15 @@ export interface UseRoomResult {
   systemFeed: Message[];
   /** v4 (Track C): the subscribed room channel, for broadcast (strokes). null until subscribed. */
   channel: RealtimeChannel | null;
+  // ---- v5 Wave 1 ----
+  /** Realtime channel connection state. */
+  connection: ConnectionState;
+  /** Score events parsed from 'score:' system messages; for ScorePop components. */
+  scoreEvents: ScoreEvent[];
+  /** Set when the server sends a kicked:{playerId} message for this client's player. */
+  kicked: boolean;
+  /** v5: relay reactions parsed from 'reaction:' system messages */
+  reactions: ReactionEvent[];
 }
 
 export function useRoom(roomCode: string): UseRoomResult {
@@ -97,6 +126,12 @@ export function useRoom(roomCode: string): UseRoomResult {
   const [chains, setChains] = useState<ChainSummary[]>([]);
   const [systemFeed, setSystemFeed] = useState<Message[]>([]);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  // ---- v5 Wave 1 ----
+  const [connection, setConnection] = useState<ConnectionState>('connected');
+  const [scoreEvents, setScoreEvents] = useState<ScoreEvent[]>([]);
+  const [kicked, setKicked] = useState(false);
+  const [reactions, setReactions] = useState<ReactionEvent[]>([]);
+  const hostAbsentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roundNumberRef = useRef<number | null>(null);
   const statusRef = useRef<RoomPublic['status'] | null>(null);
@@ -132,6 +167,7 @@ export function useRoom(roomCode: string): UseRoomResult {
       setReveals([]);
       setChains([]);
       setSystemFeed([]);
+      setReactions([]);
       revealSetAtRef.current = null;
     }
     statusRef.current = r.status;
@@ -210,6 +246,26 @@ export function useRoom(roomCode: string): UseRoomResult {
             }
           }
           setChains(chainList);
+        }
+        {
+          let reactionList: ReactionEvent[] = [];
+          for (const m of msgs) {
+            if (m.type === 'system' && m.content.startsWith('reaction:')) {
+              const parsed = parseReaction(m.content);
+              if (parsed) {
+                // If the same player toggles, the last message wins? Actually, backend deletes/inserts,
+                // but we only get the latest 'reaction:' broadcast. 
+                // We should just append all broadcasts and rebuild the state by processing them in order.
+                // Or just use the server broadcast to toggle it locally.
+                const existsIdx = reactionList.findIndex(r => 
+                  r.gameNo === parsed.gameNo && r.chainIndex === parsed.chainIndex && r.step === parsed.step && r.playerId === parsed.playerId && r.emoji === parsed.emoji
+                );
+                if (existsIdx >= 0) reactionList.splice(existsIdx, 1);
+                else reactionList.push(parsed);
+              }
+            }
+          }
+          setReactions(reactionList);
         }
         // Messages aren't tagged by round, so bound the search to messages after the
         // latest plain (non-structured) system message (each turn change inserts one) —
@@ -347,6 +403,30 @@ export function useRoom(roomCode: string): UseRoomResult {
           } else if (msg.type === 'system' && msg.content.startsWith(SYS_CHAIN_PREFIX)) {
             const parsed = parseChain(msg.content);
             if (parsed) setChains((prev) => upsertChain(prev, parsed));
+          } else if (msg.type === 'system' && msg.content.startsWith(SYS_SCORE_PREFIX)) {
+            // v5: score event — accumulate for ScorePop components
+            const parsed = parseScore(msg.content);
+            if (parsed) setScoreEvents((prev) => [...prev.slice(-50), parsed]);
+          } else if (msg.type === 'system' && msg.content.startsWith('reaction:')) {
+            const parsed = parseReaction(msg.content);
+            if (parsed) {
+              setReactions((prev) => {
+                const next = [...prev];
+                const existsIdx = next.findIndex(r => 
+                  r.gameNo === parsed.gameNo && r.chainIndex === parsed.chainIndex && r.step === parsed.step && r.playerId === parsed.playerId && r.emoji === parsed.emoji
+                );
+                if (existsIdx >= 0) next.splice(existsIdx, 1);
+                else next.push(parsed);
+                return next;
+              });
+            }
+          } else if (msg.type === 'system' && msg.content.startsWith('kicked:')) {
+            // v5: kick detection — the target's playerId follows the prefix
+            const targetId = msg.content.slice('kicked:'.length);
+            if (playerId && targetId === playerId) {
+              setKicked(true);
+            }
+            void refetchRoom();
           } else {
             setMessages((prev) => [...prev, msg].slice(-100));
             if (msg.type === 'system') {
@@ -369,16 +449,32 @@ export function useRoom(roomCode: string): UseRoomResult {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
+        setConnection('connected');
         if (playerId) void channel.track({ playerId });
         // Catch up on anything inserted between the initial load and now.
         void refetchRoom();
         setChannel(channel);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setConnection('reconnecting');
+      } else if (status === 'CLOSED') {
+        setConnection('offline');
       }
     });
+
+    // navigator.onLine fallback
+    const handleOffline = () => setConnection('offline');
+    const handleOnline = () => {
+      setConnection('connected');
+      void refetchRoom();
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
 
     return () => {
       setChannel(null);
       void supabase.removeChannel(channel);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
     };
   }, [roomId, playerId, supabase, refetchRoom]);
 
@@ -412,6 +508,41 @@ export function useRoom(roomCode: string): UseRoomResult {
   const isHost = !!room && !!playerId && room.host_player_id === playerId;
   const isDrawer = !!room && !!playerId && room.current_drawer_id === playerId;
 
+  // ---- v5 Wave 1: host-absent detection → claim-host ----
+  const roomStatus2 = room?.status ?? null;
+  const hostId = room?.host_player_id ?? null;
+  const meId2 = me?.id ?? null;
+  useEffect(() => {
+    // Only trigger in lobby/album/finished when the host is absent
+    if (!hostId || !meId2 || !playerId) return;
+    if (roomStatus2 === 'playing') return; // drawer-left logic handles mid-game
+    if (!onlineIds.has(meId2)) return; // wait for presence to sync
+    if (onlineIds.has(hostId)) return; // host is present
+
+    // Clear any running timer first
+    if (hostAbsentTimerRef.current) clearTimeout(hostAbsentTimerRef.current);
+
+    hostAbsentTimerRef.current = setTimeout(() => {
+      // Re-check host is still absent
+      if (onlineIds.has(hostId)) return;
+      // I am the lowest turn_order online player → claim host
+      const onlinePl = players.filter((p) => onlineIds.has(p.id) && p.left_at == null);
+      if (onlinePl.length === 0) return;
+      const lowest = onlinePl.reduce((a, b) => (a.turn_order < b.turn_order ? a : b));
+      if (lowest.id !== meId2) return;
+      import('@/lib/api').then(({ api }) => {
+        api.claimHost({ roomCode, playerId: meId2 }).catch(() => {
+          // Expected to fail if another player already claimed; swallow.
+        });
+      });
+    }, HOST_ABSENT_MS);
+
+    return () => {
+      if (hostAbsentTimerRef.current) clearTimeout(hostAbsentTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hostId, meId2, roomStatus2, onlineIds]);
+
   return {
     room,
     players,
@@ -430,5 +561,9 @@ export function useRoom(roomCode: string): UseRoomResult {
     reveal,
     reveals,
     channel,
+    connection,
+    scoreEvents,
+    kicked,
+    reactions,
   };
 }

@@ -1,8 +1,13 @@
 'use client';
 import { useState } from 'react';
 import EmojiCanvas from '@/components/EmojiCanvas';
-import EmojiPicker from '@/components/EmojiPicker';
-import DrawCanvas from '@/components/canvas/DrawCanvas';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(() => import('@/components/EmojiPicker'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-surface-muted" />
+});
+const DrawCanvas = dynamic(() => import('@/components/canvas/DrawCanvas'), { ssr: false });
 import type { InputMode, StrokeEvent } from '@/lib/types';
 
 export interface DrawPanelProps {

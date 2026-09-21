@@ -77,6 +77,37 @@ export async function POST(req: Request) {
       input = settings.input;
     }
 
+    let packs: string[] | undefined;
+    if (settings?.packs !== undefined) {
+      if (!Array.isArray(settings.packs) || !settings.packs.every((p) => typeof p === 'string')) {
+        throw new HttpError(400, 'Invalid settings.packs');
+      }
+      packs = settings.packs;
+    }
+
+    let customWords: string[] | undefined;
+    if (settings?.customWords !== undefined) {
+      if (!Array.isArray(settings.customWords) || !settings.customWords.every((w) => typeof w === 'string')) {
+        throw new HttpError(400, 'Invalid settings.customWords');
+      }
+      const words = Array.from(new Set(settings.customWords.map((w) => w.trim()).filter((w) => w.length > 0 && w.length <= 40)));
+      if (words.length > 0 && words.length < 3) {
+        throw new HttpError(400, 'Minimum 3 custom words required (or 0 to disable)');
+      }
+      if (words.length > 60) {
+        throw new HttpError(400, 'Maximum 60 custom words allowed');
+      }
+      customWords = words;
+    }
+
+    let difficulty: RoomSettings['difficulty'];
+    if (settings?.difficulty !== undefined) {
+      if (settings.difficulty !== 'easy' && settings.difficulty !== 'normal' && settings.difficulty !== 'hard') {
+        throw new HttpError(400, 'Invalid settings.difficulty');
+      }
+      difficulty = settings.difficulty;
+    }
+
     const room = await getRoomByCode(roomCode.trim().toUpperCase());
 
     if (room.status !== 'lobby') {
@@ -93,7 +124,10 @@ export async function POST(req: Request) {
     const nextSettings: RoomSettings = {};
     if (rounds !== undefined) nextSettings.rounds = rounds;
     if (mode === 'charades' && kinds !== undefined) nextSettings.kinds = kinds;
+    if (mode === 'charades' && difficulty !== undefined) nextSettings.difficulty = difficulty;
     if (mode === 'relay' && relayTimers !== undefined) nextSettings.relayTimers = relayTimers;
+    if (mode === 'classic' && packs !== undefined) nextSettings.packs = packs;
+    if (mode === 'classic' && customWords !== undefined) nextSettings.customWords = customWords;
     if (preservedInput !== undefined) nextSettings.input = preservedInput;
 
     const admin = getSupabaseAdmin();

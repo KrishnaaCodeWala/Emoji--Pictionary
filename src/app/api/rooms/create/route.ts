@@ -26,10 +26,12 @@ export async function POST(req: Request) {
       return jsonError(400, 'Invalid JSON body');
     }
 
-    const { nickname, mode: requestedMode } = (body ?? {}) as Partial<CreateRoomReq>;
+    const { nickname, mode: requestedMode, avatar, authUid } = (body ?? {}) as Partial<CreateRoomReq>;
     if (typeof nickname !== 'string' || nickname.trim().length < 1 || nickname.length > MAX_NICKNAME_LENGTH) {
       return jsonError(400, `nickname must be 1-${MAX_NICKNAME_LENGTH} characters`);
     }
+    // avatar is optional; validate it's a single emoji or skip
+    const safeAvatar = typeof avatar === 'string' && avatar.length <= 8 ? avatar : null;
 
     let mode: GameMode = 'classic';
     if (requestedMode !== undefined) {
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
 
     const { data: player, error: playerError } = await admin
       .from('players')
-      .insert({ room_id: roomId, nickname: nickname.trim(), turn_order: 0 })
+      .insert({ room_id: roomId, nickname: nickname.trim(), turn_order: 0, avatar: safeAvatar, auth_uid: authUid })
       .select()
       .single();
 

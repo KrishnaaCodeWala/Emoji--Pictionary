@@ -67,6 +67,7 @@ async function getPlayersOrdered(roomId: string): Promise<Player[]> {
     .from('players')
     .select('*')
     .eq('room_id', roomId)
+    .neq('role', 'spectator')
     .order('turn_order', { ascending: true });
   if (error) throw new HttpError(500, error.message);
   return (data ?? []) as Player[];
@@ -400,7 +401,7 @@ export async function tryAdvanceStep(roomId: string, force: boolean): Promise<bo
       step,
       kind,
       author_player_id: null,
-      content: kind === 'write' ? pickWord() : kind === 'draw' ? RELAY_DEFAULT_DRAW : RELAY_DEFAULT_GUESS,
+      content: kind === 'write' ? pickWord(null, room.settings?.difficulty, room.settings?.customWords) : kind === 'draw' ? RELAY_DEFAULT_DRAW : RELAY_DEFAULT_GUESS,
       submitted: true,
     }));
     const { error: fillError } = await admin
@@ -587,6 +588,60 @@ export async function albumAdvance(roomId: string): Promise<void> {
       lastGuess: (lastGuessStep ?? lastStep)?.content ?? '',
     };
     await insertSystemMessage(roomId, SYS_CHAIN_PREFIX + JSON.stringify(summary));
+  }
+
+  // Calculate Relay Awards
+  const { data: reactions, error: reactionsError } = await admin
+    .from('reactions')
+    .select('*')
+    .eq('room_id', roomId)
+    .eq('game_no', room.game_no);
+  
+  if (!reactionsError && reactions && reactions.length > 0) {
+    // 1. Funniest chain (most reactions overall)
+    const chainCounts = new Map<number, number>();
+    // 2. Most reacted step per player
+    const playerStepCounts = new Map<string, { stepId: string, count: number, chainIndex: number, step: number }>();
+    
+    for (const r of reactions) {
+      chainCounts.set(r.chain_index, (chainCounts.get(r.chain_index) ?? 0) + 1);
+    }
+    
+    // Find funniest chain
+    let maxChainReactions = 0;
+    let funniestChainIndex = -1;
+    for (const [chainIndex, count] of chainCounts.entries()) {
+      if (count > maxChainReactions) {
+        maxChainReactions = count;
+        funniestChainIndex = chainIndex;
+      }
+    }
+    
+    if (funniestChainIndex !== -1) {
+      const originPlayer = chains.find(c => c.chain_index === funniestChainIndex)?.origin_player_id;
+      const originName = originPlayer ? (nicknameById.get(originPlayer) ?? 'Someone') : 'Someone';
+      await insertSystemMessage(roomId, `🏆 Funniest Chain: ${originName}'s chain with ${maxChainReactions} reactions!`);
+    }
+
+    // Optional scoring: +1 per reaction to step author (if we can find authors)
+    // We would need to join reactions with chain_steps to get authors.
+    // For now, let's keep it simple and omit the DB scoring update unless strictly requested.
+  }
+
+  // Write to game_results for players with auth_uid
+  const authPlayers = players.filter(p => p.auth_uid != null);
+  if (authPlayers.length > 0) {
+    // Relay doesn't have strict placement like Classic since score isn't tracked the same way,
+    // but maybe we just give them 0 placement or order by turn_order?
+    // Let's just use 1 for all for simplicity in Relay.
+    const results = authPlayers.map(p => ({
+      room_id: roomId,
+      user_id: p.auth_uid,
+      mode: 'relay' as const,
+      placement: 1,
+      points: 0
+    }));
+    await admin.from('game_results').insert(results);
   }
 
   const { error: finishError } = await admin

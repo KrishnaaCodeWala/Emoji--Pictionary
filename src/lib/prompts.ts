@@ -6,7 +6,8 @@ import type { HintKey, Prompt, PublicHints, RoomRow } from './types';
 import { ALL_PROMPT_KINDS } from './constants';
 import { pickWord } from './words';
 
-const CANDIDATE_POOL_LIMIT = 60;
+const CANDIDATE_POOL_LIMIT = 60; // fallback default
+
 
 function rowToPrompt(row: Record<string, unknown>): Prompt {
   return {
@@ -33,14 +34,14 @@ function weightedPick(candidates: Prompt[]): Prompt {
   return candidates[candidates.length - 1];
 }
 
-async function queryCandidates(kinds: string[], excludeIds: string[]): Promise<Prompt[]> {
+async function queryCandidates(kinds: string[], excludeIds: string[], limit: number): Promise<Prompt[]> {
   const admin = getSupabaseAdmin();
   let query = admin
     .from('prompts')
     .select('*')
     .in('kind', kinds)
     .order('popularity', { ascending: false })
-    .limit(CANDIDATE_POOL_LIMIT);
+    .limit(limit);
 
   if (excludeIds.length > 0) {
     query = query.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -58,17 +59,61 @@ async function queryCandidates(kinds: string[], excludeIds: string[]): Promise<P
  */
 export async function pickPrompt(room: RoomRow): Promise<{ answer: string; promptId: string | null }> {
   if (room.mode !== 'charades') {
-    return { answer: pickWord(room.current_word), promptId: null };
+    // ---- v5 Wave 2: Classic mode custom words & packs ----
+    const settings = room.settings ?? {};
+    if (settings.customWords && settings.customWords.length > 0) {
+      const available = settings.customWords.filter((w) => w !== room.current_word);
+      if (available.length > 0) {
+        return { answer: available[Math.floor(Math.random() * available.length)], promptId: null };
+      }
+      return { answer: settings.customWords[Math.floor(Math.random() * settings.customWords.length)], promptId: null };
+    }
+
+    if (settings.packs && settings.packs.length > 0) {
+      const admin = getSupabaseAdmin();
+      const { data, error } = await admin
+        .from('prompts')
+        .select('title')
+        .eq('kind', 'word')
+        .in('pack', settings.packs);
+      if (!error && data && data.length > 0) {
+        const words = data.map((d) => d.title).filter((w) => w !== room.current_word);
+        if (words.length > 0) {
+          return { answer: words[Math.floor(Math.random() * words.length)], promptId: null };
+        }
+        return { answer: data[Math.floor(Math.random() * data.length)].title, promptId: null };
+      }
+    }
+    // Fallback to words.ts
+    return { answer: pickWord(room.current_word, room.settings?.difficulty, room.settings?.customWords), promptId: null };
   }
 
   const kinds = room.settings?.kinds && room.settings.kinds.length > 0
     ? room.settings.kinds
     : [...ALL_PROMPT_KINDS];
   const usedIds = room.settings?.usedPromptIds ?? [];
+  const difficulty = room.settings?.difficulty ?? 'normal';
 
-  let candidates = await queryCandidates(kinds, usedIds);
+  // Determine limit based on difficulty (easy: top 40%, normal: top 80%, hard: all)
+  const admin = getSupabaseAdmin();
+  const { count, error: countErr } = await admin
+    .from('prompts')
+    .select('*', { count: 'exact', head: true })
+    .in('kind', kinds);
+  
+  if (countErr) throw new HttpError(500, countErr.message);
+  
+  const total = count ?? 0;
+  let limit = CANDIDATE_POOL_LIMIT;
+  if (total > 0) {
+    if (difficulty === 'easy') limit = Math.max(10, Math.ceil(total * 0.4));
+    else if (difficulty === 'normal') limit = Math.max(10, Math.ceil(total * 0.8));
+    else limit = total; // hard
+  }
+
+  let candidates = await queryCandidates(kinds, usedIds, limit);
   if (candidates.length === 0 && usedIds.length > 0) {
-    candidates = await queryCandidates(kinds, []);
+    candidates = await queryCandidates(kinds, [], limit);
   }
   if (candidates.length === 0) {
     throw new HttpError(500, 'No prompts available for selected kinds');

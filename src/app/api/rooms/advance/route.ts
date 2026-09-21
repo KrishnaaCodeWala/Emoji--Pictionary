@@ -31,6 +31,13 @@ export async function POST(req: Request) {
 
     if (reason !== 'drawer_left') {
       const now = Date.now();
+      // Block advance while the round intro countdown is showing.
+      if (room.round_intro_until) {
+        const introEnd = new Date(room.round_intro_until).getTime();
+        if (now < introEnd) {
+          return jsonError(400, 'Round intro is still showing');
+        }
+      }
       const endTime = room.round_end_time ? new Date(room.round_end_time).getTime() : 0;
       if (now < endTime) {
         return jsonError(400, 'Round has not ended yet');

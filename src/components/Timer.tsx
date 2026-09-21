@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { playTick, hapticTimeUp } from '@/lib/sound';
 
 export interface TimerProps {
   endsAt: string | null;
@@ -31,11 +32,20 @@ export default function Timer({ endsAt, onExpire }: TimerProps) {
     // endsAt changes and guarantees onExpire fires at most once per endsAt value.
     let fired = false;
 
+    let lastSec = secondsLeft(endsAt);
+
     const tick = () => {
       const s = secondsLeft(endsAt);
       setSeconds(s);
+      
+      if (s > 0 && s < 10 && s !== lastSec) {
+        playTick();
+      }
+      lastSec = s;
+      
       if (s <= 0 && !fired) {
         fired = true;
+        hapticTimeUp();
         onExpire?.();
       }
     };

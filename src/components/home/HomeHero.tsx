@@ -4,18 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GameMode } from '@/lib/types';
-import { HOME_CYCLE_MS, MAX_NICKNAME_LENGTH, ROOM_CODE_LENGTH } from '@/lib/constants';
-import { getNickname } from '@/lib/player';
+import { HOME_CYCLE_MS, MAX_NICKNAME_LENGTH, ROOM_CODE_LENGTH, AVATARS } from '@/lib/constants';
+import { getNickname, getAvatar, setAvatar as storeAvatar } from '@/lib/player';
 import { THEME_FOR_MODE } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import AvatarPicker from '@/components/AvatarPicker';
 import ThemeShowcase from './ThemeShowcase';
 
 export interface HomeHeroProps {
   /** called with the mode of the panel that was visible when the user created a room */
-  onCreate: (nickname: string, mode: GameMode) => void;
-  onJoin: (nickname: string, code: string) => void;
+  onCreate: (nickname: string, mode: GameMode, avatar: string) => void;
+  onJoin: (nickname: string, code: string, avatar: string, spectate: boolean) => void;
+  onRejoin: (nickname: string, code: string) => void;
   initialJoinCode?: string;
   pending?: 'create' | 'join' | null;
   error?: string | null;
@@ -37,11 +39,18 @@ export default function HomeHero({ onCreate, onJoin, initialJoinCode, pending, e
   const [resetToken, setResetToken] = useState(0);
   const [nickname, setNicknameInput] = useState(() => getNickname());
   const [roomCode, setRoomCode] = useState(() => (initialJoinCode ?? '').toUpperCase());
+  const [avatar, setAvatarState] = useState<string>(() => getAvatar() ?? AVATARS[Math.floor(Math.random() * AVATARS.length)]);
+  const [spectate, setSpectate] = useState(false);
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement | null>(null);
 
   const activeMode = MODES[index];
   const theme = THEME_FOR_MODE[activeMode];
+
+  function handleAvatarChange(next: string) {
+    setAvatarState(next);
+    storeAvatar(next);
+  }
 
   useEffect(() => {
     if (paused) return;
@@ -141,15 +150,21 @@ export default function HomeHero({ onCreate, onJoin, initialJoinCode, pending, e
             <label htmlFor="nickname" className="text-sm font-medium">
               Your nickname
             </label>
-            <Input
-              id="nickname"
-              type="text"
-              value={nickname}
-              maxLength={MAX_NICKNAME_LENGTH}
-              onChange={(e) => setNicknameInput(e.target.value)}
-              placeholder="e.g. Pixel"
-            />
+            <div className="flex items-center gap-3">
+              <span className="text-2xl select-none" aria-label="Your avatar">{avatar}</span>
+              <Input
+                id="nickname"
+                type="text"
+                value={nickname}
+                maxLength={MAX_NICKNAME_LENGTH}
+                onChange={(e) => setNicknameInput(e.target.value)}
+                placeholder="e.g. Pixel"
+              />
+            </div>
           </div>
+
+          {/* v5: Avatar picker */}
+          <AvatarPicker value={avatar} onChange={handleAvatarChange} />
 
           {error && (
             <p className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]" role="alert">
@@ -159,7 +174,7 @@ export default function HomeHero({ onCreate, onJoin, initialJoinCode, pending, e
 
           <Button
             type="button"
-            onClick={() => onCreate(trimmedNickname, activeMode)}
+            onClick={() => onCreate(trimmedNickname, activeMode, avatar)}
             disabled={createDisabled}
             className="w-full"
           >
@@ -187,15 +202,36 @@ export default function HomeHero({ onCreate, onJoin, initialJoinCode, pending, e
             />
           </div>
 
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="spectate" 
+              checked={spectate} 
+              onChange={(e) => setSpectate(e.target.checked)} 
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <label htmlFor="spectate" className="text-sm text-muted-foreground">Join as spectator</label>
+          </div>
+
           <Button
             type="button"
             variant="outline"
-            onClick={() => onJoin(trimmedNickname, roomCode.trim().toUpperCase())}
+            onClick={() => onJoin(trimmedNickname, roomCode.trim().toUpperCase(), avatar, spectate)}
             disabled={joinDisabled}
             className="w-full"
           >
             {pending === 'join' ? 'Joining…' : 'Join room'}
           </Button>
+
+          {roomCode.trim().length === ROOM_CODE_LENGTH && trimmedNickname.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onRejoin(trimmedNickname, roomCode.trim().toUpperCase())}
+              className="text-xs text-muted-foreground hover:text-primary transition underline decoration-dashed mt-2"
+            >
+              Were you just playing? Rejoin here.
+            </button>
+          )}
         </Card>
       </div>
     </section>

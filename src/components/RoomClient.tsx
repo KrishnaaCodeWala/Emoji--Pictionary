@@ -12,13 +12,17 @@ import type { GameMode, HintKey, Player, RoomSettings, WordRes } from '@/lib/typ
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
 import Results from '@/components/Results';
+import ConnectionBanner from '@/components/ConnectionBanner';
+import RoundIntro from '@/components/RoundIntro';
 import { AnimatePresence, motion } from 'framer-motion';
+import { unlockAudio, playCorrect, playWrong, playReveal, playClapper, playYourTurn, playFanfare } from '@/lib/sound';
 
 export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
   const {
     room, players, messages, canvas, me, isHost, isDrawer, onlineIds, loading, error,
     hints, reveal, reveals, chains, systemFeed, refetchRoom, channel,
+    connection, scoreEvents, kicked, reactions,
   } = useRoom(code);
 
   // Optimistic mode/settings so rapid toggles in the lobby build on each other instead of
@@ -52,6 +56,13 @@ export default function RoomClient({ code }: { code: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStoredPlayer, code]);
 
+  // v5: redirect when kicked
+  useEffect(() => {
+    if (kicked) {
+      router.replace('/?kicked=1');
+    }
+  }, [kicked, router]);
+
   // Drawer word fetch, keyed on round_number.
   useEffect(() => {
     if (!isDrawer || !room || !me) {
@@ -78,6 +89,7 @@ export default function RoomClient({ code }: { code: string }) {
 
   const handleStart = () => {
     if (!me) return;
+    unlockAudio(); // first gesture — unlock Web Audio
     setStarting(true);
     setActionError(null);
     api
@@ -86,6 +98,29 @@ export default function RoomClient({ code }: { code: string }) {
         setActionError(err instanceof Error ? err.message : 'Failed to start game');
       })
       .finally(() => setStarting(false));
+  };
+
+  const handleLeave = () => {
+    if (!me) return;
+    api.leave({ roomCode: code, playerId: me.id })
+      .then(() => router.push('/'))
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : 'Failed to leave room');
+      });
+  };
+
+  const handleKick = (targetPlayerId: string) => {
+    if (!me) return;
+    api.kick({ roomCode: code, playerId: me.id, targetPlayerId }).catch((err: unknown) => {
+      setActionError(err instanceof Error ? err.message : 'Failed to kick player');
+    });
+  };
+
+  const handlePromote = (targetPlayerId: string) => {
+    if (!me) return;
+    api.promotePlayer({ roomCode: code, playerId: me.id, targetPlayerId }).catch((err: unknown) => {
+      setActionError(err instanceof Error ? err.message : 'Failed to promote player');
+    });
   };
 
   const handleDraw = (emojis: string) => {
@@ -100,7 +135,14 @@ export default function RoomClient({ code }: { code: string }) {
     api
       .guess({ roomCode: code, playerId: me.id, guess })
       .then((res) => {
-        if (res.close) setCloseFlash((n) => n + 1);
+        if (res.correct) {
+          // ScoreEvent will handle the success chime
+        } else if (res.close) {
+          setCloseFlash((n) => n + 1);
+          playWrong();
+        } else {
+          playWrong();
+        }
       })
       .catch((err: unknown) => {
         setActionError(err instanceof Error ? err.message : 'Failed to submit guess');
@@ -134,6 +176,18 @@ export default function RoomClient({ code }: { code: string }) {
     api.resetRoom({ roomCode: code, playerId: me.id }).catch((err: unknown) => {
       setActionError(err instanceof Error ? err.message : 'Failed to reset room');
     });
+  };
+
+  const handleReact = (chainIndex: number, step: number, emoji: string) => {
+    if (!me || !room) return;
+    api.reactRelay({
+      roomCode: code,
+      gameNo: room.game_no,
+      chainIndex,
+      step,
+      playerId: me.id,
+      emoji
+    }).catch(err => console.error("Failed to react", err));
   };
 
   // Always holds the latest round number so the grace-period check below is not stale.
@@ -205,6 +259,43 @@ export default function RoomClient({ code }: { code: string }) {
     return () => clearTimeout(timer);
   }, [roomStatus, drawerId, roundNumber, onlineIds, meId, code]);
 
+  // Sound triggers
+  useEffect(() => {
+    if (roomStatus === 'finished') playFanfare();
+  }, [roomStatus]);
+
+  useEffect(() => {
+    if (reveal) playReveal();
+  }, [reveal]);
+
+  const prevRelayPhaseRef = useRef(relay?.task?.phase);
+  useEffect(() => {
+    if (relay?.task?.phase && relay.task.phase !== 'album' && relay.task.phase !== prevRelayPhaseRef.current && !relay.task.submitted) {
+      playYourTurn();
+    }
+    prevRelayPhaseRef.current = relay?.task?.phase;
+  }, [relay?.task?.phase, relay?.task?.submitted]);
+
+  const prevRevealedUpToRef = useRef(relay?.album?.revealedUpTo);
+  useEffect(() => {
+    if (relay?.album?.revealedUpTo !== undefined && relay.album.revealedUpTo !== prevRevealedUpToRef.current && prevRevealedUpToRef.current !== undefined) {
+      playClapper();
+    }
+    prevRevealedUpToRef.current = relay?.album?.revealedUpTo;
+  }, [relay?.album?.revealedUpTo]);
+
+  const scoreEventsLength = scoreEvents.length;
+  const prevScoreEventsLength = useRef(scoreEventsLength);
+  useEffect(() => {
+    if (scoreEventsLength > prevScoreEventsLength.current) {
+      const newEvents = scoreEvents.slice(prevScoreEventsLength.current);
+      if (newEvents.some(e => e.playerId === me?.id && e.reason === 'guess')) {
+        playCorrect();
+      }
+    }
+    prevScoreEventsLength.current = scoreEventsLength;
+  }, [scoreEventsLength, scoreEvents, me?.id]);
+
   // Relay: mirrors the drawer-left pattern above, but relay has no single actor — the
   // lowest-turn_order online player calls /api/relay/advance after the grace period.
   const relayStepRef = useRef<number | null>(null);
@@ -243,6 +334,11 @@ export default function RoomClient({ code }: { code: string }) {
 
   const theme = THEME_FOR_MODE[optimisticMode?.mode ?? room.mode];
 
+  // v5: find the next drawer for RoundIntro
+  const nextDrawer = room.status === 'playing' && room.current_drawer_id
+    ? players.find((p) => p.id === room.current_drawer_id) ?? null
+    : null;
+
   return (
     <div data-theme={theme} className="min-h-screen transition-colors duration-500 relative bg-background text-foreground">
       {theme === 'theatre' && (
@@ -251,6 +347,9 @@ export default function RoomClient({ code }: { code: string }) {
           <div className="vintage-vignette" />
         </>
       )}
+
+      {/* v5: Connection banner */}
+      <ConnectionBanner connection={connection} />
 
       {actionError && room.status !== 'lobby' && (
         <div role="alert" className="gutter relative z-10 mt-3 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-2 text-sm text-red-600">
@@ -277,6 +376,10 @@ export default function RoomClient({ code }: { code: string }) {
               starting={starting}
               error={actionError}
               onSetMode={handleSetMode}
+              onLeave={handleLeave}
+              onKick={handleKick}
+              onPromote={handlePromote}
+              scoreEvents={scoreEvents}
             />
           </motion.div>
         )}
@@ -288,6 +391,14 @@ export default function RoomClient({ code }: { code: string }) {
             exit={{ opacity: 0 }}
             className="relative z-10"
           >
+            {/* v5: Round intro overlay */}
+            {room.round_intro_until && (
+              <RoundIntro
+                roundIntroUntil={room.round_intro_until}
+                nextDrawer={nextDrawer}
+                roundNumber={room.round_number}
+              />
+            )}
             <Game
               room={room}
               players={players}
@@ -327,6 +438,9 @@ export default function RoomClient({ code }: { code: string }) {
               mode={room.mode}
               reveals={reveals}
               chains={chains}
+              reactions={reactions}
+              onReact={handleReact}
+              meId={me?.id ?? null}
             />
           </motion.div>
         )}

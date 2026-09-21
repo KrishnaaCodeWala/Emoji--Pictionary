@@ -1,0 +1,16 @@
+[
+  "Key", "Lock", "Wallet", "Purse", "Bag", "Backpack", "Suitcase", "Umbrella",
+  "Glasses", "Sunglasses", "Watch", "Clock", "Ring", "Necklace", "Bracelet", "Earring",
+  "Shirt", "T-shirt", "Pants", "Jeans", "Shorts", "Skirt", "Dress", "Suit",
+  "Coat", "Jacket", "Sweater", "Scarf", "Gloves", "Hat", "Cap", "Helmet",
+  "Shoe", "Boot", "Sneaker", "Sandal", "Sock", "Tie", "Belt", "Button",
+  "Needle", "Thread", "Scissors", "Knife", "Fork", "Spoon", "Plate", "Bowl",
+  "Cup", "Mug", "Glass", "Bottle", "Jug", "Pitcher", "Pot", "Pan",
+  "Toilet", "Shower", "Bathtub", "Sink", "Towel", "Soap", "Shampoo", "Toothbrush",
+  "Comb", "Brush", "Dryer", "Iron", "Vacuum", "Broom", "Mop", "Bucket",
+  "Hospital", "School", "Library", "Museum", "Bank", "Post Office", "Police Station", "Fire Station",
+  "Restaurant", "Cafe", "Bakery", "Supermarket", "Mall", "Store", "Shop", "Market",
+  "Park", "Garden", "Zoo", "Amusement Park", "Stadium", "Arena", "Theater", "Cinema",
+  "Church", "Temple", "Mosque", "Castle", "Palace", "Tower", "Bridge", "Tunnel",
+  "Airport", "Station", "Port", "Harbor", "Beach", "Island", "Forest", "Jungle"
+]

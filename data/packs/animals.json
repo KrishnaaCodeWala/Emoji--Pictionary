@@ -1,0 +1,17 @@
+[
+  "Dog", "Cat", "Mouse", "Rat", "Rabbit", "Hare", "Squirrel", "Chipmunk",
+  "Fox", "Wolf", "Bear", "Lion", "Tiger", "Leopard", "Cheetah", "Panther",
+  "Elephant", "Rhino", "Hippo", "Giraffe", "Zebra", "Camel", "Llama", "Alpaca",
+  "Horse", "Pony", "Donkey", "Mule", "Cow", "Bull", "Pig", "Sheep",
+  "Goat", "Deer", "Moose", "Elk", "Kangaroo", "Koala", "Panda", "Sloth",
+  "Monkey", "Ape", "Gorilla", "Chimpanzee", "Baboon", "Lemur", "Bat", "Bird",
+  "Eagle", "Hawk", "Falcon", "Owl", "Penguin", "Ostrich", "Emu", "Kiwi",
+  "Parrot", "Pigeon", "Dove", "Crow", "Raven", "Swan", "Duck", "Goose",
+  "Chicken", "Rooster", "Hen", "Turkey", "Peacock", "Flamingo", "Pelican", "Seagull",
+  "Fish", "Shark", "Whale", "Dolphin", "Porpoise", "Seal", "Walrus", "Manatee",
+  "Octopus", "Squid", "Jellyfish", "Starfish", "Crab", "Lobster", "Shrimp", "Clam",
+  "Snail", "Slug", "Worm", "Insect", "Bug", "Ant", "Bee", "Wasp",
+  "Butterfly", "Moth", "Fly", "Mosquito", "Spider", "Scorpion", "Tick", "Flea",
+  "Snake", "Lizard", "Gecko", "Chameleon", "Iguana", "Turtle", "Tortoise", "Crocodile",
+  "Alligator", "Frog", "Toad", "Salamander", "Newt", "Dinosaur", "Dragon", "Unicorn"
+]

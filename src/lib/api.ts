@@ -1,9 +1,10 @@
 // Track B. Typed fetch wrappers. Throw Error(body.error) on non-2xx.
 import type {
-  AdvanceReq, ApiError, CreateRoomReq, CreateRoomRes, DrawReq, GuessReq, GuessRes,
-  JoinRoomReq, JoinRoomRes, OkRes, ResetRoomReq, StartRoomReq, WordRes,
+  AdvanceReq, ApiError, ClaimHostReq, CreateRoomReq, CreateRoomRes, DrawReq, GuessReq, GuessRes,
+  JoinRoomReq, JoinRoomRes, KickReq, LeaveReq, OkRes, ResetRoomReq, StartRoomReq, WordRes,
   RevealHintReq, SetModeReq,
   AlbumAdvanceReq, AlbumChainRes, RelayAdvanceReq, RelaySubmitReq, RelayTaskRes,
+  RejoinReq, RejoinRes, SpectateReq, PromoteReq, ReactionEvent,
 } from './types';
 
 async function parseJson(res: Response): Promise<unknown> {
@@ -76,4 +77,20 @@ export const api = {
     postJson<OkRes>('/api/draw', b),
   guess: (b: GuessReq): Promise<GuessRes> =>
     postJson<GuessRes>('/api/guess', b),
+  // ---- v5 Wave 1 ----
+  claimHost: (b: ClaimHostReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/claim-host', b),
+  leave: (b: LeaveReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/leave', b),
+  kick: (b: KickReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/kick', b),
+  // ---- v5 Wave 3 ----
+  rejoinRoom: (b: RejoinReq): Promise<RejoinRes> =>
+    postJson<RejoinRes>('/api/rooms/rejoin', b),
+  spectateRoom: (b: SpectateReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/spectate', b),
+  promotePlayer: (b: PromoteReq): Promise<OkRes> =>
+    postJson<OkRes>('/api/rooms/promote', b),
+  reactRelay: (b: ReactionEvent & { roomCode: string }): Promise<OkRes> =>
+    postJson<OkRes>('/api/relay/react', b),
 };

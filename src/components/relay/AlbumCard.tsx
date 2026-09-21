@@ -1,7 +1,13 @@
-import type { AlbumStep } from '@/lib/types';
+import type { AlbumStep, ReactionEvent } from '@/lib/types';
 import { isImageContent } from '@/lib/canvasContent';
 
-export interface AlbumCardProps { step: AlbumStep; isNew?: boolean }
+export interface AlbumCardProps { 
+  step: AlbumStep; 
+  isNew?: boolean;
+  reactions?: ReactionEvent[];
+  onReact?: (emoji: string) => void;
+  meId?: string | null;
+}
 
 const KIND_LABELS: Record<AlbumStep['kind'], string> = {
   write: 'Phrase',
@@ -9,7 +15,20 @@ const KIND_LABELS: Record<AlbumStep['kind'], string> = {
   guess: 'Guess',
 };
 
-export default function AlbumCard({ step, isNew }: AlbumCardProps) {
+const REACTION_EMOJIS = ['😂', '😮', '❤️', '🤔', '💀'];
+
+export default function AlbumCard({ step, isNew, reactions = [], onReact, meId }: AlbumCardProps) {
+  // Aggregate reactions by emoji
+  const counts = new Map<string, number>();
+  const myReactions = new Set<string>();
+  
+  for (const r of reactions) {
+    counts.set(r.emoji, (counts.get(r.emoji) ?? 0) + 1);
+    if (meId && r.playerId === meId) {
+      myReactions.add(r.emoji);
+    }
+  }
+
   return (
     <div
       className={`w-full rounded-xl border border-border bg-surface p-4 shadow-sm ${
@@ -49,6 +68,29 @@ export default function AlbumCard({ step, isNew }: AlbumCardProps) {
           <p className="break-words text-lg text-foreground">&ldquo;{step.content}&rdquo;</p>
         )}
       </div>
+
+      {onReact && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
+          {REACTION_EMOJIS.map(e => {
+            const hasReacted = myReactions.has(e);
+            const count = counts.get(e) ?? 0;
+            if (!onReact && count === 0) return null; // Don't show zero-count if readonly
+            
+            return (
+              <button
+                key={e}
+                onClick={() => onReact?.(e)}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm transition-colors ${
+                  hasReacted ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30' : 'bg-surface-muted hover:bg-[var(--border)] text-muted-foreground'
+                }`}
+              >
+                <span>{e}</span>
+                {count > 0 && <span className="font-semibold">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,10 +6,15 @@ import { ROUNDS_PER_PLAYER } from '@/lib/constants';
 import { pickWord } from '@/lib/words';
 import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
-import EmojiPicker from '../components/EmojiPicker';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(() => import('../components/EmojiPicker'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-surface-muted" />
+});
 import EmojiCanvas from '../components/EmojiCanvas';
-import DrawCanvas from '../components/canvas/DrawCanvas';
-import CanvasView from '../components/canvas/CanvasView';
+const DrawCanvas = dynamic(() => import('../components/canvas/DrawCanvas'), { ssr: false });
+const CanvasView = dynamic(() => import('../components/canvas/CanvasView'), { ssr: false });
 import Chat from '../components/Chat';
 import GuessInput from '../components/GuessInput';
 import ActorPanel from './charades/ActorPanel';
@@ -35,8 +40,8 @@ const RELAY_INSPIRE_TEMPLATES = [
   '{word} in outer space',
 ];
 
-function inspireRelayPhrase(): string {
-  const word = pickWord();
+function inspireRelayPhrase(difficulty?: 'easy' | 'normal' | 'hard', customWords?: string[]): string {
+  const word = pickWord(null, difficulty, customWords);
   const template =
     RELAY_INSPIRE_TEMPLATES[Math.floor(Math.random() * RELAY_INSPIRE_TEMPLATES.length)] ??
     RELAY_INSPIRE_TEMPLATES[0];
@@ -76,6 +81,9 @@ export interface GameProps {
   strokes?: StrokeEvent[];
   /** drawer: broadcast a stroke batch */
   onStroke?: (s: StrokeEvent) => void;
+  // ---- v5 (reactions) ----
+  reactions?: ReactionEvent[];
+  onReact?: (chainIndex: number, step: number, emoji: string) => void;
 }
 
 const noop = () => {};
@@ -83,7 +91,7 @@ const noop = () => {};
 export default function Game({
   room, players, me, isDrawer, canvas, messages, word, onDraw, onGuess, onExpire,
   prompt, hints, reveal, closeFlash, onRevealHint, relay, onRelayExpire,
-  inputMode, strokes, onStroke,
+  inputMode, strokes, onStroke, reactions, onReact,
 }: GameProps) {
   // Relay album: disable "Next" while a request is in flight so a double tap cannot skip a card.
   const [albumAdvancing, setAlbumAdvancing] = useState(false);
@@ -115,7 +123,7 @@ export default function Game({
       body = task.submitted ? (
         <WaitingPanel progress={relay.progress} phaseLabel="Write" />
       ) : (
-        <WritePanel onSubmit={relay.submit} submitted={task.submitted} onInspire={inspireRelayPhrase} />
+        <WritePanel onSubmit={relay.submit} submitted={task.submitted} onInspire={() => inspireRelayPhrase(room.settings?.difficulty, room.settings?.customWords)} />
       );
     } else if (task.phase === 'draw') {
       body = task.submitted ? (
@@ -138,7 +146,17 @@ export default function Game({
         <GuessPanel canvas={task.input?.content ?? ''} onSubmit={relay.submit} submitted={task.submitted} />
       );
     } else {
-      body = <AlbumViewer album={relay.album} isHost={isHost} onNext={handleAlbumNext} advancing={albumAdvancing} />;
+      body = (
+        <AlbumViewer 
+          album={relay.album} 
+          isHost={isHost} 
+          onNext={handleAlbumNext} 
+          advancing={albumAdvancing}
+          reactions={room.mode === 'relay' && room.status === 'album' && relay.album ? reactions?.filter(r => r.chainIndex === relay.album!.chainIndex) : []}
+          onReact={(step, emoji) => onReact && relay.album ? onReact(relay.album.chainIndex, step, emoji) : undefined}
+          meId={me?.id ?? null}
+        />
+      );
     }
 
     return (

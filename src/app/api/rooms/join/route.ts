@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return jsonError(400, 'Invalid JSON body');
     }
 
-    const { roomCode, nickname } = (body ?? {}) as Partial<JoinRoomReq>;
+    const { roomCode, nickname, avatar, spectate } = (body ?? {}) as Partial<JoinRoomReq>;
 
     if (typeof roomCode !== 'string' || roomCode.trim().length === 0) {
       return jsonError(400, 'roomCode is required');
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     if (typeof nickname !== 'string' || nickname.trim().length < 1 || nickname.length > MAX_NICKNAME_LENGTH) {
       return jsonError(400, `nickname must be 1-${MAX_NICKNAME_LENGTH} characters`);
     }
+    const safeAvatar = typeof avatar === 'string' && avatar.length <= 8 ? avatar : null;
 
     const admin = getSupabaseAdmin();
     const normalizedCode = roomCode.trim().toUpperCase();
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
 
     if (roomError) throw new HttpError(500, roomError.message);
     if (!room) return jsonError(404, 'Room not found');
-    if (room.status !== 'lobby') return jsonError(409, 'Room has already started');
 
     const { count, error: countError } = await admin
       .from('players')
@@ -40,11 +40,15 @@ export async function POST(req: Request) {
       .eq('room_id', room.id);
 
     if (countError) throw new HttpError(500, countError.message);
-    if ((count ?? 0) >= MAX_PLAYERS) return jsonError(403, 'Room is full');
+
+    let role = 'player';
+    if (spectate || room.status !== 'lobby' || (count ?? 0) >= MAX_PLAYERS) {
+      role = 'spectator';
+    }
 
     const { data: player, error: playerError } = await admin
       .from('players')
-      .insert({ room_id: room.id, nickname: nickname.trim(), turn_order: count ?? 0 })
+      .insert({ room_id: room.id, nickname: nickname.trim(), turn_order: count ?? 0, avatar: safeAvatar, role, auth_uid: body.authUid })
       .select()
       .single();
 

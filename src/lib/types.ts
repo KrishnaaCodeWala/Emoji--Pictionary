@@ -20,6 +20,10 @@ export interface RoomSettings {
   relayTimers?: { write: number; draw: number; guess: number };
   /** v4: 'emoji' (default) or 'canvas'. */
   input?: InputMode;
+  // ---- v5 Wave 2 ----
+  packs?: string[];
+  customWords?: string[];
+  difficulty?: 'easy' | 'normal' | 'hard';
 }
 
 /**
@@ -41,6 +45,9 @@ export interface StrokeEvent {
   kind?: 'segment' | 'fill' | 'clear' | 'undo';
 }
 
+/** v5: Realtime channel connection state exposed by useRoom. */
+export type ConnectionState = 'connected' | 'reconnecting' | 'offline';
+
 /** Row of the `rooms_public` view (no current_word). This is what clients see. */
 export interface RoomPublic {
   id: string;
@@ -61,6 +68,9 @@ export interface RoomPublic {
   album_chain: number | null;
   album_step: number | null;
   game_no: number;
+  // ---- v5 Wave 1 ----
+  /** ISO timestamp while the 3-2-1 round intro overlay is shown. Null otherwise. */
+  round_intro_until: string | null;
 }
 
 // ---- v3: Canvas Relay ----
@@ -142,6 +152,16 @@ export interface Player {
   score: number;
   turn_order: number;
   joined_at: string;
+  // ---- v5 Wave 1 ----
+  /** Emoji avatar chosen on the home page. */
+  avatar: string | null;
+  /** Consecutive correct guesses; resets on a miss or end of turn as drawer. */
+  streak: number;
+  /** Set when a player leaves mid-game; null while still active. */
+  left_at: string | null;
+  // ---- v5 Wave 3 ----
+  role: 'player' | 'spectator';
+  auth_uid: string | null;
 }
 
 export interface Message {
@@ -154,11 +174,18 @@ export interface Message {
 }
 
 // ---- API contracts (all POST unless noted; JSON in/out) ----
-export interface CreateRoomReq { nickname: string; mode?: GameMode }
+export interface CreateRoomReq { nickname: string; mode?: GameMode; avatar?: string; authUid?: string }
 export interface CreateRoomRes { roomCode: string; roomId: string; playerId: string }
 
-export interface JoinRoomReq { roomCode: string; nickname: string }
+export interface JoinRoomReq { roomCode: string; nickname: string; avatar?: string; authUid?: string; spectate?: boolean }
 export interface JoinRoomRes { roomId: string; playerId: string }
+
+// ---- v5 Wave 1 ----
+export interface ClaimHostReq { roomCode: string; playerId: string }
+export interface LeaveReq { roomCode: string; playerId: string }
+export interface KickReq { roomCode: string; playerId: string; targetPlayerId: string }
+/** Structured system message emitted on correct guess: 'score:' + JSON. */
+export interface ScoreEvent { playerId: string; delta: number; reason: 'guess' | 'draw'; streak: number }
 
 export interface StartRoomReq { roomCode: string; playerId: string }
 export interface AdvanceReq { roomCode: string; playerId: string; reason?: 'timeout' | 'drawer_left' }
@@ -188,3 +215,36 @@ export interface ApiError { error: string }
 
 /** Empty success body for start/advance/reset/draw. */
 export interface OkRes { ok: true }
+
+// ---- v5 Wave 3 ----
+export interface ReactionEvent {
+  gameNo: number;
+  chainIndex: number;
+  step: number;
+  playerId: string;
+  emoji: string;
+}
+
+export interface SpectateReq { roomCode: string; playerId: string }
+export interface PromoteReq { roomCode: string; playerId: string; targetPlayerId: string }
+export interface RejoinReq { roomCode: string; nickname: string }
+export interface RejoinRes { success: boolean; status: 'approved' | 'pending' | 'rejected' | 'not_found'; playerId?: string; roomCode?: string }
+export interface ApproveRejoinReq { roomCode: string; playerId: string; targetNickname: string; approve: boolean }
+
+export interface Profile {
+  id: string;
+  display_name: string | null;
+  avatar: string | null;
+  stats: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface GameResult {
+  id: string;
+  room_id: string;
+  user_id: string;
+  mode: GameMode;
+  placement: number;
+  points: number;
+  created_at: string;
+}

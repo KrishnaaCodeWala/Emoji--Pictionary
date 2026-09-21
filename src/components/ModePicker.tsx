@@ -1,6 +1,6 @@
-'use client';
+import { useState, useEffect } from 'react';
 import type { GameMode, PromptKind, RoomSettings } from '@/lib/types';
-import { ALL_PROMPT_KINDS, RELAY_TIMER_PRESETS, ROUNDS_PER_PLAYER } from '@/lib/constants';
+import { ALL_PROMPT_KINDS, RELAY_TIMER_PRESETS, ROUNDS_PER_PLAYER, PACKS } from '@/lib/constants';
 
 type RelayPreset = keyof typeof RELAY_TIMER_PRESETS;
 
@@ -42,15 +42,29 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
   const rounds = settings.rounds ?? ROUNDS_PER_PLAYER;
   const kinds = settings.kinds ?? [...ALL_PROMPT_KINDS];
   const relayPreset = matchRelayPreset(settings.relayTimers);
+  const difficulty = settings.difficulty ?? 'normal';
+  const packs = settings.packs ?? [];
+  const customWordsArray = settings.customWords ?? [];
+
+  const [customWordsText, setCustomWordsText] = useState(customWordsArray.join('\n'));
+
+  // Sync incoming customWords if they change externally (e.g. initial load)
+  useEffect(() => {
+    setCustomWordsText((settings.customWords ?? []).join('\n'));
+  }, [settings.customWords]);
+
+  function getCommonSettings() {
+    return { rounds, input: settings.input };
+  }
 
   function selectMode(next: GameMode) {
     if (!editable) return;
     if (next === 'classic') {
-      onChange('classic', { rounds, input: settings.input });
+      onChange('classic', { ...getCommonSettings(), packs, customWords: customWordsArray });
     } else if (next === 'relay') {
       onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[relayPreset], input: settings.input });
     } else {
-      onChange('charades', { kinds, rounds, input: settings.input });
+      onChange('charades', { ...getCommonSettings(), kinds, difficulty });
     }
   }
 
@@ -64,15 +78,39 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
     const has = kinds.includes(kind);
     if (has && kinds.length <= 1) return; // at least one must stay on
     const nextKinds = has ? kinds.filter((k) => k !== kind) : [...kinds, kind];
-    onChange('charades', { kinds: nextKinds, rounds, input: settings.input });
+    onChange('charades', { ...getCommonSettings(), kinds: nextKinds, difficulty });
+  }
+
+  function selectDifficulty(diff: 'easy' | 'normal' | 'hard') {
+    if (!editable) return;
+    onChange('charades', { ...getCommonSettings(), kinds, difficulty: diff });
+  }
+
+  function togglePack(packId: string) {
+    if (!editable) return;
+    const has = packs.includes(packId);
+    const nextPacks = has ? packs.filter((p) => p !== packId) : [...packs, packId];
+    onChange('classic', { ...getCommonSettings(), packs: nextPacks, customWords: customWordsArray });
+  }
+
+  function handleCustomWordsBlur() {
+    if (!editable) return;
+    const words = Array.from(new Set(customWordsText.split('\n').map((w) => w.trim()).filter((w) => w.length > 0 && w.length <= 40)));
+    // If it's between 1 and 2, it's invalid, we won't push it. But if it's 0 or >=3, it's valid.
+    if (words.length > 0 && words.length < 3) {
+      // Don't update DB, maybe show error locally if we had error state, but let's just ignore.
+      return;
+    }
+    const finalWords = words.slice(0, 60);
+    onChange('classic', { ...getCommonSettings(), packs, customWords: finalWords });
   }
 
   function selectRounds(next: number) {
     if (!editable) return;
     if (mode === 'classic') {
-      onChange('classic', { rounds: next, input: settings.input });
+      onChange('classic', { ...getCommonSettings(), rounds: next, packs, customWords: customWordsArray });
     } else {
-      onChange('charades', { kinds, rounds: next, input: settings.input });
+      onChange('charades', { ...getCommonSettings(), kinds, rounds: next, difficulty });
     }
   }
 
@@ -149,26 +187,99 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
       )}
 
       {mode === 'charades' && (
-        <div className="flex flex-wrap gap-2">
-          {ALL_PROMPT_KINDS.map((kind) => {
-            const on = kinds.includes(kind);
-            return (
-              <button
-                key={kind}
-                type="button"
-                disabled={!editable}
-                onClick={() => toggleKind(kind)}
-                aria-pressed={on}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
-                  on
-                    ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
-                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
-                }`}
-              >
-                {KIND_LABELS[kind]}
-              </button>
-            );
-          })}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {ALL_PROMPT_KINDS.map((kind) => {
+              const on = kinds.includes(kind);
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={!editable}
+                  onClick={() => toggleKind(kind)}
+                  aria-pressed={on}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                    on
+                      ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
+                  }`}
+                >
+                  {KIND_LABELS[kind]}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-[var(--muted-foreground)]">Difficulty</span>
+            <div className="flex gap-1">
+              {(['easy', 'normal', 'hard'] as const).map((diff) => (
+                <button
+                  key={diff}
+                  type="button"
+                  disabled={!editable}
+                  onClick={() => selectDifficulty(diff)}
+                  aria-pressed={difficulty === diff}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed capitalize ${
+                    difficulty === diff
+                      ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
+                  }`}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mode === 'classic' && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-[var(--muted-foreground)]">Word Packs</span>
+            <div className="flex flex-wrap gap-2">
+              {PACKS.map((pack) => {
+                const on = packs.includes(pack.id);
+                return (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    disabled={!editable}
+                    onClick={() => togglePack(pack.id)}
+                    aria-pressed={on}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                      on
+                        ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+                        : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
+                    }`}
+                  >
+                    {pack.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-end">
+              <label htmlFor="customWords" className="text-sm text-[var(--muted-foreground)]">Custom Words (one per line)</label>
+              <span className="text-xs text-muted-foreground">
+                {customWordsText.split('\n').filter(w => w.trim().length > 0).length} / 60
+              </span>
+            </div>
+            <textarea
+              id="customWords"
+              disabled={!editable}
+              value={customWordsText}
+              onChange={(e) => setCustomWordsText(e.target.value)}
+              onBlur={handleCustomWordsBlur}
+              placeholder="e.g. Apple&#10;Banana&#10;Orange"
+              className="w-full min-h-[100px] resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {customWordsText.split('\n').filter(w => w.trim().length > 0).length > 0 && customWordsText.split('\n').filter(w => w.trim().length > 0).length < 3 && (
+              <p className="text-xs text-red-500">Need at least 3 words to use custom words.</p>
+            )}
+          </div>
         </div>
       )}
 

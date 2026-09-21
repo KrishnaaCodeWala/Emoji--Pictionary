@@ -5,6 +5,7 @@ function playerKey(roomCode: string): string {
 }
 
 const NICKNAME_KEY = 'ep:nickname';
+const AVATAR_KEY = 'ep:avatar';
 
 export function getPlayerId(roomCode: string): string | null {
   if (typeof window === 'undefined') return null;
@@ -39,5 +40,24 @@ export function setNickname(nickname: string): void {
     window.localStorage.setItem(NICKNAME_KEY, nickname);
   } catch {
     // ignore (localStorage unavailable)
+  }
+}
+
+/** v5 Wave 1: remembered emoji avatar. */
+export function getAvatar(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(AVATAR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAvatar(avatar: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(AVATAR_KEY, avatar);
+  } catch {
+    // ignore
   }
 }
