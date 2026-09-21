@@ -87,9 +87,9 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={handleBlur}
-      className="relative flex flex-1 w-full flex-col min-h-0 overflow-hidden bg-background text-foreground transition-colors duration-500"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors duration-500"
     >
-      <div className="relative shrink-0 flex flex-col justify-center min-h-[120px] md:min-h-[180px]">
+      <div className="relative flex-1 overflow-hidden min-h-[320px]">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeMode}
@@ -104,17 +104,49 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             <ThemeShowcase mode={activeMode} active />
           </motion.div>
         </AnimatePresence>
+
+        <button
+          type="button"
+          aria-label="Previous look"
+          onClick={() => goTo(index - 1)}
+          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full border-2 border-border bg-surface/80 p-2 text-foreground shadow-[3px_3px_0_0_var(--color-border)] transition hover:bg-surface-muted sm:left-4"
+        >
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next look"
+          onClick={() => goTo(index + 1)}
+          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full border-2 border-border bg-surface/80 p-2 text-foreground shadow-[3px_3px_0_0_var(--color-border)] transition hover:bg-surface-muted sm:right-4"
+        >
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+        </button>
+
+        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+          {MODES.map((m, i) => (
+            <button
+              key={m}
+              type="button"
+              aria-label={`Show ${MODE_LABEL[m]} look`}
+              aria-current={i === index}
+              onClick={() => goTo(i)}
+              className={`h-2.5 w-2.5 rounded-full border border-border transition-all ${
+                i === index ? 'w-6 bg-primary' : 'bg-surface-muted'
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="gutter relative z-10 mx-auto w-full max-w-md pb-4 pt-2 sm:pb-12 flex flex-col shrink-0">
-        <Card className="flex flex-col gap-2 sm:gap-3 shrink-0 p-3 sm:p-6 shadow-xl">
-          <div className="text-center shrink-0">
+      <div className="gutter relative z-10 mx-auto w-full max-w-md pb-8 pt-2 sm:pb-12">
+        <Card className="flex flex-col gap-4">
+          <div className="text-center">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Creating a room starts it in {MODE_LABEL[activeMode]}
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex flex-col gap-2">
             <label htmlFor="nickname" className="text-sm font-medium">
               Your nickname
             </label>
@@ -135,7 +167,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
           <AvatarPicker value={avatar} onChange={handleAvatarChange} />
 
           {error && (
-            <p className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)] shrink-0" role="alert">
+            <p className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]" role="alert">
               {error}
             </p>
           )}
@@ -144,18 +176,18 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             type="button"
             onClick={() => onCreate(trimmedNickname, activeMode, avatar)}
             disabled={createDisabled}
-            className="w-full shrink-0"
+            className="w-full"
           >
             {pending === 'create' ? 'Creating…' : 'Create room'}
           </Button>
 
-          <div className="flex items-center gap-3 text-muted-foreground shrink-0">
+          <div className="flex items-center gap-3 text-muted-foreground">
             <div className="h-px flex-1 bg-border" />
             <span className="text-xs uppercase tracking-wide">or join</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex flex-col gap-2">
             <label htmlFor="roomCode" className="text-sm font-medium">
               Room code
             </label>
@@ -170,7 +202,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <input 
               type="checkbox" 
               id="spectate" 
@@ -186,7 +218,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             variant="outline"
             onClick={() => onJoin(trimmedNickname, roomCode.trim().toUpperCase(), avatar, spectate)}
             disabled={joinDisabled}
-            className="w-full shrink-0"
+            className="w-full"
           >
             {pending === 'join' ? 'Joining…' : 'Join room'}
           </Button>
@@ -195,7 +227,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             <button
               type="button"
               onClick={() => onRejoin(trimmedNickname, roomCode.trim().toUpperCase())}
-              className="text-xs text-muted-foreground hover:text-primary transition underline decoration-dashed mt-2 shrink-0"
+              className="text-xs text-muted-foreground hover:text-primary transition underline decoration-dashed mt-2"
             >
               Were you just playing? Rejoin here.
             </button>

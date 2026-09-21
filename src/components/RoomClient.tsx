@@ -340,7 +340,7 @@ export default function RoomClient({ code }: { code: string }) {
     : null;
 
   return (
-    <div data-theme={theme} className="relative flex flex-1 flex-col min-h-0 w-full overflow-hidden text-foreground bg-background transition-colors duration-500">
+    <div data-theme={theme} className="h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 relative bg-background text-foreground">
       {theme === 'theatre' && (
         <>
           <div className="vintage-noise" />
