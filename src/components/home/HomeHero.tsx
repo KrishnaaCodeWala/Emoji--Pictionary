@@ -89,7 +89,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
       onBlur={handleBlur}
       className="relative flex flex-1 w-full flex-col min-h-0 overflow-hidden bg-background text-foreground transition-colors duration-500"
     >
-      <div className="relative flex-1 flex flex-col justify-center min-h-[160px] md:min-h-[320px]">
+      <div className="relative shrink-0 flex flex-col justify-center min-h-[120px] md:min-h-[180px]">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeMode}
@@ -104,21 +104,6 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
             <ThemeShowcase mode={activeMode} active />
           </motion.div>
         </AnimatePresence>
-
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {MODES.map((m, i) => (
-            <button
-              key={m}
-              type="button"
-              aria-label={`Show ${MODE_LABEL[m]} look`}
-              aria-current={i === index}
-              onClick={() => goTo(i)}
-              className={`h-2.5 w-2.5 rounded-full border border-border transition-all ${
-                i === index ? 'w-6 bg-primary' : 'bg-surface-muted'
-              }`}
-            />
-          ))}
-        </div>
       </div>
 
       <div className="gutter relative z-10 mx-auto w-full max-w-md pb-4 pt-2 sm:pb-12 flex flex-col shrink-0">
