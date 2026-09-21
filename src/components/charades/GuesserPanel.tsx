@@ -61,7 +61,7 @@ export default function GuesserPanel({
   }, [closeFlash]);
 
   return (
-    <div className="relative flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
+    <div className="relative flex flex-col gap-3">
       <AnimatePresence>
         {showFlash && (
           <motion.div 
@@ -78,21 +78,15 @@ export default function GuesserPanel({
         )}
       </AnimatePresence>
 
-      <p className="text-center text-muted-foreground shrink-0">
+      <p className="text-center text-muted-foreground">
         {actorNickname ? `${actorNickname} is acting` : 'Waiting for the actor…'}
       </p>
 
-      <div className="shrink-0">
-        <HintBar hints={hints} />
-      </div>
-      <div className="shrink-0">
-        {inputMode === 'canvas' ? <CanvasView value={canvas} strokes={strokes ?? []} /> : <EmojiCanvas emojis={canvas} />}
-      </div>
-      <div className="flex-1 min-h-0">
-        <Chat messages={messages} players={players} />
-      </div>
+      <HintBar hints={hints} />
+      {inputMode === 'canvas' ? <CanvasView value={canvas} strokes={strokes ?? []} /> : <EmojiCanvas emojis={canvas} />}
+      <Chat messages={messages} players={players} />
 
-      <div className="shrink-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+      <div className="sticky bottom-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
         <GuessInput onSubmit={onGuess} />
       </div>
     </div>

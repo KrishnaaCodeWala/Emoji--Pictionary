@@ -340,7 +340,7 @@ export default function RoomClient({ code }: { code: string }) {
     : null;
 
   return (
-    <div data-theme={theme} className="h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 relative bg-background text-foreground">
+    <div data-theme={theme} className="min-h-screen transition-colors duration-500 relative bg-background text-foreground">
       {theme === 'theatre' && (
         <>
           <div className="vintage-noise" />
@@ -364,7 +364,7 @@ export default function RoomClient({ code }: { code: string }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.3 }}
-            className="relative z-10 flex-1 overflow-y-auto min-h-0"
+            className="relative z-10"
           >
             <Lobby
               room={optimisticMode ? { ...room, mode: optimisticMode.mode, settings: optimisticMode.settings } : room}
@@ -389,7 +389,7 @@ export default function RoomClient({ code }: { code: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden"
+            className="relative z-10"
           >
             {/* v5: Round intro overlay */}
             {room.round_intro_until && (
@@ -429,7 +429,7 @@ export default function RoomClient({ code }: { code: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="relative z-10 flex-1 overflow-y-auto min-h-0"
+            className="relative z-10"
           >
             <Results
               players={players}
