@@ -10,12 +10,12 @@ export interface AvatarPickerProps {
 
 export default function AvatarPicker({ value, onChange, className = '' }: AvatarPickerProps) {
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className={`flex flex-col gap-2 flex-1 min-h-0 ${className}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
         Pick your avatar
       </p>
       <div
-        className="grid gap-1.5"
+        className="grid gap-1.5 flex-1 min-h-0 overflow-y-auto px-1 py-1"
         style={{ gridTemplateColumns: 'repeat(8, 1fr)' }}
         role="listbox"
         aria-label="Avatar picker"
