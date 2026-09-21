@@ -113,7 +113,7 @@ export default function ThemeShowcase({ mode, active }: ThemeShowcaseProps) {
   return (
     <div
       data-theme={theme}
-      className="flex h-full w-full flex-col items-center justify-center gap-6 bg-background px-6 py-10 text-center text-foreground transition-colors"
+      className="flex h-full w-full flex-col items-center justify-center gap-6 bg-background px-6 pt-10 pb-16 text-center text-foreground transition-colors"
     >
       <div className="h-24 sm:h-28">
         {mode === 'classic' && <ClassicAnimation play={play} />}
