@@ -33,35 +33,44 @@ const EmojiCell = memo(function EmojiCell({ emoji, disabled, onPick }: EmojiCell
 export default function EmojiPicker({ value, onChange, disabled }: EmojiPickerProps) {
   const [local, setLocal] = useState(value);
   const [trackedValue, setTrackedValue] = useState(value);
+  const isTypingRef = useRef(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Keyed by name so inserting the Recent tab never shifts the active category.
   const [activeCategory, setActiveCategory] = useState<string>(EMOJI_CATEGORIES[0]?.name ?? '');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // SSR-safe lazy initializer: getRecentEmojis() itself guards `typeof window`, so this
-  // reads [] on the server and the real list on the client without a synchronous setState
-  // inside an effect body.
+  // SSR-safe lazy initializer
   const [recents, setRecents] = useState<string[]>(() => getRecentEmojis());
 
   const [searchInput, setSearchInput] = useState('');
   const [query, setQuery] = useState('');
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep local state in sync if the parent value changes externally (e.g. reset for a new
-  // round). Adjusting state during render (instead of an effect) avoids an extra render pass.
   if (value !== trackedValue) {
     setTrackedValue(value);
-    setLocal(value);
+    // Only accept incoming updates if we aren't actively typing, OR if the server forcefully cleared it
+    if (!isTypingRef.current || value === '') {
+      setLocal(value);
+    }
   }
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
 
   function emit(next: string) {
     setLocal(next);
+    isTypingRef.current = true;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 2000);
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       onChange(next);
