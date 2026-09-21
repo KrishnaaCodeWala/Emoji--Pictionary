@@ -57,34 +57,44 @@ concurrent calls resolve to exactly one winner.
 ```
 src/
   app/
-    page.tsx                         home: nickname, create / join (?join=CODE prefill)
+    page.tsx                         'use client' wrapper: reads ?join=, create/join
+                                     handlers, renders <HomeHero/>
     room/[code]/page.tsx             server component -> <RoomClient/>
-    layout.tsx, globals.css          fonts, metadata, theme tokens
+    layout.tsx, globals.css          fonts (incl. --font-sketch), metadata, data-theme
+                                     token sets (studio/theatre/sketchbook)
     api/
       rooms/{create,join,start,advance,reset,word,mode,hint}/route.ts
       draw/route.ts  guess/route.ts  (rate limited: 5 req/s per player)
       relay/{task,submit,advance,album,album-advance}/route.ts
   components/
     RoomClient.tsx                   the orchestrator: useRoom + useRelay, wires handlers,
-                                     switches Lobby / Game / Results on room.status
-    Lobby.tsx  ModePicker.tsx  PlayerList.tsx  RoomCodeBadge.tsx
-    Game.tsx                         branches on room.mode: classic | charades | relay
+                                     switches Lobby / Game / Results on room.status, sets
+                                     data-theme={THEME_FOR_MODE[room.mode]}
+    Lobby.tsx  ModePicker.tsx  InputPicker.tsx  PlayerList.tsx  RoomCodeBadge.tsx
+    Game.tsx                         branches on room.mode: classic | charades | relay,
+                                     and on inputMode: emoji picker | canvas
     Results.tsx  Scoreboard.tsx
     EmojiPicker.tsx  EmojiCanvas.tsx  Chat.tsx  GuessInput.tsx  Timer.tsx   (shared)
+    canvas/{DrawCanvas,CanvasView,CanvasToolbar}.tsx  freehand drawing + live replay
+    home/{HomeHero,ThemeShowcase}.tsx  animated, auto-cycling home page
     charades/{ActorPanel,GuesserPanel,HintBar,RevealCard,PosterFrame}.tsx
     relay/{WritePanel,DrawPanel,GuessPanel,WaitingPanel,ProgressPill,AlbumCard,AlbumViewer}.tsx
   hooks/
     useRoom.ts                       room/players/messages/canvas/presence + parsing of
-                                     hints:/reveal:/chain:/relay: system messages
+                                     hints:/reveal:/chain:/relay: system messages; exposes
+                                     the Realtime channel for stroke broadcast
     useRelay.ts                      relay task + album fetching, progress from systemFeed
+    useStrokes.ts                    broadcast/receive StrokeEvent over the room channel
   lib/
     types.ts                         ALL shared types and API request/response contracts
-    constants.ts                     game numbers (timers, points, limits, prefixes)
+    constants.ts                     game numbers (timers, points, limits, prefixes),
+                                     canvas + theme constants (v4)
     api.ts                           typed fetch wrappers (one per endpoint)
     player.ts                        localStorage helpers (try/catch everywhere)
     http.ts                          jsonOk / jsonError / HttpError / handleApiError
     game.ts                          startNextTurn, awardAndAdvance, resolveRoundReveal
-    prompts.ts  matching.ts  words.ts  emojis.ts  rateLimit.ts  relay.ts  roomCode.ts
+    prompts.ts  matching.ts  words.ts  rateLimit.ts  relay.ts  roomCode.ts  floodFill.ts
+    emojis.ts  emojis.generated.ts  recentEmojis.ts  canvasContent.ts   (v4 emoji + canvas)
 supabase/
   schema.sql                         v1 tables + rooms_public view + RLS + realtime publication
   migrations/002_charades.sql        mode/settings/prompts
@@ -93,7 +103,8 @@ supabase/
 data/catalog.seed.json               657 seeded charades titles (posters filled in DB by import-posters)
 scripts/
   seed-prompts.ts                    npm run seed:prompts
-  smoke-api.sh  smoke-charades.sh  smoke-relay.sh     curl API tests
+  gen-emojis.ts                      npm run gen:emojis -> src/lib/emojis.generated.ts
+  smoke-api.sh  smoke-charades.sh  smoke-relay.sh  smoke-canvas.sh     curl API tests
   e2e/{classic,charades,relay}.js    Playwright UI tests (see scripts/e2e/README.md)
 ```
 
@@ -197,6 +208,65 @@ optional and wire it in `RoomClient`.
   irrelevant to you unless you use the same tooling.
 - `next dev` will pick port 3001 if 3000 is busy; the E2E scripts take `BASE_URL`.
 
+## v4 — full emoji set, canvas drawing, animated home
+
+Built as four parallel tracks on disjoint files (see `BUILD_PLAN_V4.md` for the full plan
+and contracts). Summary for the next agent:
+
+**Emoji generation.** `scripts/gen-emojis.ts` (`npm run gen:emojis`) reads
+`unicode-emoji-json/data-by-group.json`, filters to `unicode_version <= 15` (renders on
+current Windows/Android/iOS) and drops the "Component" group, and emits
+`src/lib/emojis.generated.ts` as `EMOJI_GROUPS: { name, emojis: { e, n } }[]` (~1,870 emoji
+in 9 groups: Smileys, People, Animals, Food, Travel, Activities, Objects, Symbols, Flags).
+`src/lib/emojis.ts` derives `EMOJI_CATEGORIES` from it (same shape as before) and adds
+`searchEmojis(query)`. The generated file is committed (deterministic output); re-run the
+script after bumping `unicode-emoji-json`.
+
+**Input modes + stroke broadcast.** `RoomSettings.input` is `'emoji' | 'canvas'` (default
+`emoji`), picked by the host via `InputPicker` in the lobby, and applies to every draw step
+in all three modes. Canvas is a fixed logical 480x360 buffer (`CANVAS_W`/`CANVAS_H`) with
+brush sizes, 8 colours + eraser, bucket fill (`src/lib/floodFill.ts`), undo, clear
+(`src/components/canvas/{DrawCanvas,CanvasToolbar,CanvasView}.tsx`). Live sync rides
+Supabase Realtime **broadcast** (not the DB) on the room's existing channel, event
+`'stroke'`, payload `StrokeEvent` (`src/hooks/useStrokes.ts`); persistence reuses the
+existing content pipeline — on pointer-up (debounced 300 ms) the drawer posts a PNG data URL
+through `/api/draw` or the relay step content, and anything `isImageContent()`
+(`src/lib/canvasContent.ts`) is rendered as an `<img>` wherever emoji content used to render
+(`EmojiCanvas`, `AlbumCard`, relay `GuessPanel`). This means reload/late-join gets the latest
+frame for free with no new persistence code. Size guard:
+`MAX_CANVAS_DATA_URL_LENGTH` (200 000 chars); rate limit unchanged (5 req/s).
+
+**Themes and the `data-theme` convention.** `globals.css` now defines three complete token
+sets — `[data-theme="studio"]` (Classic: clean/bright/rounded), `[data-theme="theatre"]`
+(Charades: the vintage sepia look, unchanged values, just moved off bare `:root`), and
+`[data-theme="sketchbook"]` (Relay: paper background, ink foreground, marker accent colours)
+— each with a `prefers-color-scheme: dark` variant. Token *names* are unchanged
+(`--background`, `--foreground`, `--surface`, ... feeding the same `bg-background` /
+`text-foreground` / ... Tailwind utilities via the `@theme inline` block), so nothing that
+already used those utilities needed to change. `:root` and `body` default to the studio
+values; `.theme-modern` is kept as an alias to studio so any pre-v4 reference to it still
+resolves correctly. `THEME_FOR_MODE` (`constants.ts`) maps `classic/charades/relay` ->
+`studio/theatre/sketchbook`; `RoomClient` sets `data-theme={THEME_FOR_MODE[room.mode]}` on
+its root wrapper (this replaced the old ad-hoc `isModern` boolean/class). A new display font,
+Caveat, is loaded in `layout.tsx` as `--font-sketch` (alongside the existing Inter, Rye,
+Special Elite) and used for sketchbook headings via the `font-sketch` utility.
+
+**Home hero.** `src/app/page.tsx` is now a thin `'use client'` wrapper (still `Suspense`ing
+`useSearchParams` for `?join=CODE`) around `HomeHero`, which owns the nickname/create/join
+form and the animated theme carousel. `HomeHero` auto-advances through the three
+`ThemeShowcase` panels (one per mode, each sets `data-theme` to its own theme and renders a
+looping illustrative animation — emoji burst for Classic, clapper/spotlight for Charades,
+an SVG marker line drawing itself via `stroke-dashoffset` for Relay) every `HOME_CYCLE_MS`
+via `setInterval`, paused while the hero is hovered or has focus within it, and reset on
+manual navigation (dots / prev-next arrows, all with `aria-label`s). Panels crossfade+slide
+via `AnimatePresence`; all motion is skipped when `useReducedMotion()` is true. The
+create/join form is rendered once, positioned over the active panel, and re-skins
+automatically because it sits inside the themed `<section>` and only uses token-based
+Tailwind utilities. Creating a room passes the mode of the panel that was showing
+(`onCreate(nickname, activeMode)`) through to `api.createRoom({ nickname, mode })`. The E2E
+contract is unchanged: `#nickname`, `#roomCode` (4-char, prefilled from `?join=`), buttons
+named `/create/i` / `/join/i`, inline error text, buttons disabled while `pending`.
+
 ## 10. Timeline so far
 
 - v1 (classic) — built with 4 parallel agents in a day, verified with Playwright on
@@ -204,4 +274,7 @@ optional and wire it in `RoomClient`.
 - v2 (charades) — mode system, prompt catalog, hints, fuzzy matching, reveal card.
 - v3 (relay) — simultaneous step loop, chains, host-paced album, double-tap race fix.
 - Posters imported from Wikipedia (no API keys needed); lobby mode-picker optimistic state fix.
-- Next — frontend modernization (you).
+- Frontend modernization (Gemini) — vintage theme, motion transitions, `ui/*` primitives.
+- v4 — full emoji set (generated from `unicode-emoji-json`), canvas drawing input with live
+  stroke broadcast, three `data-theme` looks (studio/theatre/sketchbook) with an animated,
+  auto-cycling home hero.

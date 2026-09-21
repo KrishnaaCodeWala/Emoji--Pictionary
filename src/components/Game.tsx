@@ -8,6 +8,8 @@ import Scoreboard from './Scoreboard';
 import Timer from '../components/Timer';
 import EmojiPicker from '../components/EmojiPicker';
 import EmojiCanvas from '../components/EmojiCanvas';
+import DrawCanvas from '../components/canvas/DrawCanvas';
+import CanvasView from '../components/canvas/CanvasView';
 import Chat from '../components/Chat';
 import GuessInput from '../components/GuessInput';
 import ActorPanel from './charades/ActorPanel';
@@ -81,6 +83,7 @@ const noop = () => {};
 export default function Game({
   room, players, me, isDrawer, canvas, messages, word, onDraw, onGuess, onExpire,
   prompt, hints, reveal, closeFlash, onRevealHint, relay, onRelayExpire,
+  inputMode, strokes, onStroke,
 }: GameProps) {
   // Relay album: disable "Next" while a request is in flight so a double tap cannot skip a card.
   const [albumAdvancing, setAlbumAdvancing] = useState(false);
@@ -118,7 +121,15 @@ export default function Game({
       body = task.submitted ? (
         <WaitingPanel progress={relay.progress} phaseLabel="Draw" />
       ) : (
-        <DrawPanel phrase={task.input?.content ?? ''} onSubmit={relay.submit} submitted={task.submitted} />
+        <DrawPanel
+          inputMode={inputMode}
+          playerId={me?.id}
+          round={room.relay_step}
+          onStroke={onStroke}
+          phrase={task.input?.content ?? ''}
+          onSubmit={relay.submit}
+          submitted={task.submitted}
+        />
       );
     } else if (task.phase === 'guess') {
       body = task.submitted ? (
@@ -176,6 +187,10 @@ export default function Game({
               revealed={room.revealed_hints ?? []}
               onDraw={onDraw}
               onRevealHint={onRevealHint ?? noop}
+              inputMode={inputMode}
+              playerId={me?.id}
+              round={room.round_number}
+              onStroke={onStroke}
             />
           ) : (
             <GuesserPanel
@@ -186,6 +201,8 @@ export default function Game({
               actorNickname={drawer?.nickname ?? null}
               onGuess={onGuess}
               closeFlash={closeFlash ?? 0}
+              inputMode={inputMode}
+              strokes={strokes}
             />
           )}
         </div>
@@ -212,10 +229,20 @@ export default function Game({
                 <p className="text-sm text-muted-foreground">Draw:</p>
                 <p className="text-2xl font-bold text-primary">{word ?? '…'}</p>
               </div>
-              <EmojiCanvas emojis={canvas} />
+              {inputMode === 'canvas' ? (
+                <DrawCanvas
+                  value={canvas}
+                  playerId={me?.id ?? ''}
+                  round={room.round_number}
+                  onStroke={onStroke}
+                  onSnapshot={onDraw}
+                />
+              ) : (
+                <EmojiCanvas emojis={canvas} />
+              )}
             </div>
             <div className="flex flex-col gap-3">
-              <EmojiPicker value={canvas} onChange={onDraw} />
+              {inputMode !== 'canvas' && <EmojiPicker value={canvas} onChange={onDraw} />}
               <Chat messages={messages} players={players} />
             </div>
           </div>
@@ -225,7 +252,11 @@ export default function Game({
               <p className="text-center text-muted-foreground">
                 {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
               </p>
-              <EmojiCanvas emojis={canvas} />
+              {inputMode === 'canvas' ? (
+                <CanvasView value={canvas} strokes={strokes ?? []} />
+              ) : (
+                <EmojiCanvas emojis={canvas} />
+              )}
             </div>
             <div className="flex flex-col gap-3">
               <Chat messages={messages} players={players} />

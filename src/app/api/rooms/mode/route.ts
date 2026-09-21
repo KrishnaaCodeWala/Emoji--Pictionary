@@ -2,7 +2,7 @@ import { jsonOk, jsonError, HttpError, handleApiError } from '@/lib/http';
 import { getRoomByCode } from '@/lib/game';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ALL_PROMPT_KINDS } from '@/lib/constants';
-import type { SetModeReq, OkRes, RoomSettings, PromptKind } from '@/lib/types';
+import type { InputMode, SetModeReq, OkRes, RoomSettings, PromptKind } from '@/lib/types';
 
 function isValidTimer(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 15 && value <= 180;
@@ -69,6 +69,14 @@ export async function POST(req: Request) {
       relayTimers = { write: t.write, draw: t.draw, guess: t.guess };
     }
 
+    let input: InputMode | undefined;
+    if (settings?.input !== undefined) {
+      if (settings.input !== 'emoji' && settings.input !== 'canvas') {
+        throw new HttpError(400, 'Invalid settings.input');
+      }
+      input = settings.input;
+    }
+
     const room = await getRoomByCode(roomCode.trim().toUpperCase());
 
     if (room.status !== 'lobby') {
@@ -78,10 +86,15 @@ export async function POST(req: Request) {
       throw new HttpError(403, 'Only the host can change the mode');
     }
 
+    // v4: `input` is preserved across mode switches; the request may omit it, in which
+    // case the room's existing value carries over (undefined if never set, i.e. default).
+    const preservedInput = input ?? room.settings?.input;
+
     const nextSettings: RoomSettings = {};
     if (rounds !== undefined) nextSettings.rounds = rounds;
     if (mode === 'charades' && kinds !== undefined) nextSettings.kinds = kinds;
     if (mode === 'relay' && relayTimers !== undefined) nextSettings.relayTimers = relayTimers;
+    if (preservedInput !== undefined) nextSettings.input = preservedInput;
 
     const admin = getSupabaseAdmin();
     const { error } = await admin

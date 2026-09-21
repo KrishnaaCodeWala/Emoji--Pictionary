@@ -2,6 +2,8 @@ import 'server-only';
 // Canvas Relay server loop. Signatures are the contract.
 import { getSupabaseAdmin } from './supabase/admin';
 import { HttpError } from './http';
+import { isImageContent } from './canvasContent';
+import { MAX_CANVAS_DATA_URL_LENGTH } from './constants';
 import { pickWord } from './words';
 import {
   RELAY_TIMERS,
@@ -248,7 +250,13 @@ function validateContent(kind: RelayStepKind, content: string): string {
     }
     return trimmed;
   }
-  // draw
+  // draw: canvas snapshots are data URLs, everything else is an emoji string
+  if (isImageContent(content)) {
+    if (content.length > MAX_CANVAS_DATA_URL_LENGTH) {
+      throw new HttpError(400, 'drawing is too large');
+    }
+    return content;
+  }
   const codepoints = Array.from(content);
   if (codepoints.length > MAX_EMOJI_LENGTH) {
     throw new HttpError(400, `content must be at most ${MAX_EMOJI_LENGTH} characters`);

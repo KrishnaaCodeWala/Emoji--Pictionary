@@ -4,6 +4,7 @@ import { MIN_PLAYERS, RELAY_MIN_PLAYERS_HINT } from '@/lib/constants';
 import RoomCodeBadge from './RoomCodeBadge';
 import PlayerList from './PlayerList';
 import ModePicker from './ModePicker';
+import InputPicker from './InputPicker';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +35,12 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
         settings={settings}
         editable={isHost && !!onSetMode}
         onChange={(nextMode, nextSettings) => onSetMode?.(nextMode, nextSettings)}
+      />
+
+      <InputPicker
+        input={settings.input ?? 'emoji'}
+        editable={isHost && !!onSetMode}
+        onChange={(input) => onSetMode?.(mode, { ...settings, input })}
       />
 
       <div>

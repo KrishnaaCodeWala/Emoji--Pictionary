@@ -1,7 +1,8 @@
 import { jsonOk, jsonError, handleApiError, HttpError } from '@/lib/http';
 import { getRoomByCode } from '@/lib/game';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { MAX_EMOJI_LENGTH } from '@/lib/constants';
+import { MAX_CANVAS_DATA_URL_LENGTH, MAX_EMOJI_LENGTH } from '@/lib/constants';
+import { isImageContent } from '@/lib/canvasContent';
 import { checkRateLimit } from '@/lib/rateLimit';
 import type { DrawReq, OkRes } from '@/lib/types';
 
@@ -24,11 +25,19 @@ export async function POST(req: Request) {
     if (typeof emojis !== 'string') {
       throw new HttpError(400, 'emojis is required');
     }
-    if (emojis.length > MAX_EMOJI_RAW_LENGTH) {
-      throw new HttpError(400, `emojis must be at most ${MAX_EMOJI_RAW_LENGTH} characters`);
-    }
-    if (Array.from(emojis).length > MAX_EMOJI_LENGTH) {
-      throw new HttpError(400, `emojis must be at most ${MAX_EMOJI_LENGTH} characters`);
+    if (isImageContent(emojis)) {
+      // v4: canvas snapshot (data:image/png or data:image/webp). Skip the emoji
+      // code-point rule; only the overall data URL length is bounded.
+      if (emojis.length > MAX_CANVAS_DATA_URL_LENGTH) {
+        throw new HttpError(400, `emojis must be at most ${MAX_CANVAS_DATA_URL_LENGTH} characters`);
+      }
+    } else {
+      if (emojis.length > MAX_EMOJI_RAW_LENGTH) {
+        throw new HttpError(400, `emojis must be at most ${MAX_EMOJI_RAW_LENGTH} characters`);
+      }
+      if (Array.from(emojis).length > MAX_EMOJI_LENGTH) {
+        throw new HttpError(400, `emojis must be at most ${MAX_EMOJI_LENGTH} characters`);
+      }
     }
 
     if (!checkRateLimit(`draw:${playerId}`, 5, 1000)) {

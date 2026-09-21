@@ -21,6 +21,7 @@ npm run dev                      # in another terminal (note the port it prints)
 BASE_URL=http://localhost:3000 node scripts/e2e/classic.js
 BASE_URL=http://localhost:3000 node scripts/e2e/charades.js
 BASE_URL=http://localhost:3000 node scripts/e2e/relay.js
+BASE_URL=http://localhost:3000 node scripts/e2e/canvas.js     # canvas input mode
 ```
 
 Against production: `BASE_URL=https://emoji-pictionary.vercel.app node scripts/e2e/relay.js`.
@@ -39,6 +40,9 @@ lines. Screenshots land in `scripts/e2e/shots/` (git-ignored).
 - relay.js (3 players): mode sync, write/draw/guess steps, nobody receives their own chain,
   progress counter, album shows only revealed cards to non-hosts, host pages through all
   cards, results with chain summaries.
+
+- canvas.js: host selects Canvas input, draws with the mouse, guest receives live strokes
+  (`data-strokes` counter) and the persisted snapshot survives a reload; round resolves.
 
 The scripts locate elements by visible text, placeholders and roles. If you change copy or
 placeholders while restyling, update the selectors here in the same change.

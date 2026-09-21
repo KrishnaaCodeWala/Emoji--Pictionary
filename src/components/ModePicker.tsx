@@ -46,17 +46,17 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
   function selectMode(next: GameMode) {
     if (!editable) return;
     if (next === 'classic') {
-      onChange('classic', { rounds });
+      onChange('classic', { rounds, input: settings.input });
     } else if (next === 'relay') {
-      onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[relayPreset] });
+      onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[relayPreset], input: settings.input });
     } else {
-      onChange('charades', { kinds, rounds });
+      onChange('charades', { kinds, rounds, input: settings.input });
     }
   }
 
   function selectRelayPreset(preset: RelayPreset) {
     if (!editable) return;
-    onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[preset] });
+    onChange('relay', { relayTimers: RELAY_TIMER_PRESETS[preset], input: settings.input });
   }
 
   function toggleKind(kind: PromptKind) {
@@ -64,15 +64,15 @@ export default function ModePicker({ mode, settings, editable, onChange }: ModeP
     const has = kinds.includes(kind);
     if (has && kinds.length <= 1) return; // at least one must stay on
     const nextKinds = has ? kinds.filter((k) => k !== kind) : [...kinds, kind];
-    onChange('charades', { kinds: nextKinds, rounds });
+    onChange('charades', { kinds: nextKinds, rounds, input: settings.input });
   }
 
   function selectRounds(next: number) {
     if (!editable) return;
     if (mode === 'classic') {
-      onChange('classic', { rounds: next });
+      onChange('classic', { rounds: next, input: settings.input });
     } else {
-      onChange('charades', { kinds, rounds: next });
+      onChange('charades', { kinds, rounds: next, input: settings.input });
     }
   }
 

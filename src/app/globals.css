@@ -1,7 +1,91 @@
 @import "tailwindcss";
 
+/*
+ * v4 theme system. Three complete token sets, selected via `data-theme` on <body>
+ * (or any wrapper): "studio" (Classic — clean/bright/rounded), "theatre" (Charades —
+ * the vintage marquee look), "sketchbook" (Relay — paper + marker). Each has a light
+ * and a dark variant (prefers-color-scheme). Token *names* are unchanged from v1-v3 so
+ * every `bg-background` / `text-foreground` / `bg-surface` / ... utility keeps working.
+ *
+ * :root / body default to the studio values so anything rendered before a data-theme
+ * attribute is applied (or that never gets one) still looks correct.
+ */
+
 :root {
-  /* Vintage Sepia Theme (Default) */
+  /* Studio (default) — light */
+  --background: #ffffff;
+  --foreground: #111827;
+  --surface: #f3f4f6;
+  --surface-muted: #e5e7eb;
+  --border: #d1d5db;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-foreground: #ffffff;
+  --accent: #ec4899;
+  --accent-foreground: #ffffff;
+  --success: #10b981;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --muted-foreground: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0f14;
+    --foreground: #e5e7eb;
+    --surface: #131822;
+    --surface-muted: #1c2330;
+    --border: #2a3341;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    --primary-foreground: #0b0f14;
+    --accent: #f472b6;
+    --accent-foreground: #1a0b12;
+    --success: #34d399;
+    --danger: #f87171;
+    --danger-bg: #3f1d1d;
+    --muted-foreground: #9ca3af;
+  }
+}
+
+[data-theme="studio"] {
+  --background: #ffffff;
+  --foreground: #111827;
+  --surface: #f3f4f6;
+  --surface-muted: #e5e7eb;
+  --border: #d1d5db;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-foreground: #ffffff;
+  --accent: #ec4899;
+  --accent-foreground: #ffffff;
+  --success: #10b981;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --muted-foreground: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="studio"] {
+    --background: #0b0f14;
+    --foreground: #e5e7eb;
+    --surface: #131822;
+    --surface-muted: #1c2330;
+    --border: #2a3341;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    --primary-foreground: #0b0f14;
+    --accent: #f472b6;
+    --accent-foreground: #1a0b12;
+    --success: #34d399;
+    --danger: #f87171;
+    --danger-bg: #3f1d1d;
+    --muted-foreground: #9ca3af;
+  }
+}
+
+[data-theme="theatre"] {
+  /* Vintage Sepia Theme */
   --background: #f4ecd8;
   --foreground: #2b2622;
   --surface: #e9debf;
@@ -18,8 +102,64 @@
   --muted-foreground: #5c554d;
 }
 
+@media (prefers-color-scheme: dark) {
+  [data-theme="theatre"] {
+    --background: #1c1712;
+    --foreground: #ecd9b8;
+    --surface: #2a2118;
+    --surface-muted: #362b1e;
+    --border: #d8c4a0;
+    --primary: #d9704f;
+    --primary-hover: #c15c3c;
+    --primary-foreground: #1c1712;
+    --accent: #c98f4e;
+    --accent-foreground: #1c1712;
+    --success: #7fae68;
+    --danger: #d9704f;
+    --danger-bg: #3a2420;
+    --muted-foreground: #b8a888;
+  }
+}
+
+[data-theme="sketchbook"] {
+  /* Paper + marker */
+  --background: #fbf7ee;
+  --foreground: #232323;
+  --surface: #f3ecd9;
+  --surface-muted: #ece2c8;
+  --border: #232323;
+  --primary: #d62839;
+  --primary-hover: #b81f2e;
+  --primary-foreground: #fbf7ee;
+  --accent: #1f6feb;
+  --accent-foreground: #fbf7ee;
+  --success: #2a9d8f;
+  --danger: #d62839;
+  --danger-bg: #f6dede;
+  --muted-foreground: #5b5648;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="sketchbook"] {
+    --background: #1e1c18;
+    --foreground: #ece6d6;
+    --surface: #29261f;
+    --surface-muted: #322e25;
+    --border: #ece6d6;
+    --primary: #ff6b6b;
+    --primary-hover: #ff8787;
+    --primary-foreground: #1e1c18;
+    --accent: #4dabf7;
+    --accent-foreground: #1e1c18;
+    --success: #63e6be;
+    --danger: #ff6b6b;
+    --danger-bg: #3a2420;
+    --muted-foreground: #b5ae98;
+  }
+}
+
 .theme-modern {
-  /* Modern Social Media Theme */
+  /* Alias to studio so anything still using this class name (pre-v4) keeps working. */
   --background: #ffffff;
   --foreground: #111827;
   --surface: #f3f4f6;
@@ -34,6 +174,25 @@
   --danger: #ef4444;
   --danger-bg: #fef2f2;
   --muted-foreground: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-modern {
+    --background: #0b0f14;
+    --foreground: #e5e7eb;
+    --surface: #131822;
+    --surface-muted: #1c2330;
+    --border: #2a3341;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    --primary-foreground: #0b0f14;
+    --accent: #f472b6;
+    --accent-foreground: #1a0b12;
+    --success: #34d399;
+    --danger: #f87171;
+    --danger-bg: #3f1d1d;
+    --muted-foreground: #9ca3af;
+  }
 }
 
 @theme inline {
@@ -52,6 +211,7 @@
   --font-sans: var(--font-inter);
   --font-mono: var(--font-special-elite);
   --font-display: var(--font-rye);
+  --font-sketch: var(--font-sketch);
 }
 
 .vintage-noise {

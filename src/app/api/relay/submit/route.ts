@@ -1,6 +1,8 @@
 import { jsonOk, jsonError, handleApiError } from '@/lib/http';
 import { getRoomByCode } from '@/lib/game';
 import { submitStep } from '@/lib/relay';
+import { MAX_CANVAS_DATA_URL_LENGTH } from '@/lib/constants';
+import { isImageContent } from '@/lib/canvasContent';
 import type { RelaySubmitReq, OkRes } from '@/lib/types';
 
 export async function POST(req: Request) {
@@ -25,6 +27,13 @@ export async function POST(req: Request) {
     }
     if (typeof content !== 'string') {
       return jsonError(400, 'content is required');
+    }
+    // v4: a draw step's content may be a canvas snapshot (data:image/png or
+    // data:image/webp) instead of an emoji string; allow up to the canvas size cap.
+    // (The per-kind emoji code-point rule itself lives in lib/relay.ts's
+    // validateContent, which still needs a matching isImageContent() exemption there.)
+    if (isImageContent(content) && content.length > MAX_CANVAS_DATA_URL_LENGTH) {
+      return jsonError(400, `content must be at most ${MAX_CANVAS_DATA_URL_LENGTH} characters`);
     }
 
     const room = await getRoomByCode(roomCode.trim().toUpperCase());

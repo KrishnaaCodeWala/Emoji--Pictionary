@@ -1,6 +1,7 @@
 'use client';
 // Track B.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { getPlayerId } from '@/lib/player';
 import {
@@ -78,7 +79,7 @@ export interface UseRoomResult {
   /** v3 (Track B): raw system messages incl. structured ones, for useRelay to parse 'relay:' progress. */
   systemFeed: Message[];
   /** v4 (Track C): the subscribed room channel, for broadcast (strokes). null until subscribed. */
-  channel: import('@supabase/supabase-js').RealtimeChannel | null;
+  channel: RealtimeChannel | null;
 }
 
 export function useRoom(roomCode: string): UseRoomResult {
@@ -95,6 +96,7 @@ export function useRoom(roomCode: string): UseRoomResult {
   const [reveals, setReveals] = useState<RevealPayload[]>([]);
   const [chains, setChains] = useState<ChainSummary[]>([]);
   const [systemFeed, setSystemFeed] = useState<Message[]>([]);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   const roundNumberRef = useRef<number | null>(null);
   const statusRef = useRef<RoomPublic['status'] | null>(null);
@@ -166,14 +168,24 @@ export function useRoom(roomCode: string): UseRoomResult {
         return;
       }
 
-      const [playersRes, messagesRes] = await Promise.all([
+      const [playersRes, messagesRes, emojiRes] = await Promise.all([
         supabase.from('players').select('*').eq('room_id', r.id).order('turn_order', { ascending: true }),
         supabase
           .from('messages')
           .select('*')
           .eq('room_id', r.id)
+          // v4: emoji_update snapshots can be large (canvas data URLs); excluded here so
+          // they never crowd out the last 100 chat/system messages. Fetched separately below.
+          .neq('type', 'emoji_update')
           .order('created_at', { ascending: false })
           .limit(100),
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('room_id', r.id)
+          .eq('type', 'emoji_update')
+          .order('created_at', { ascending: false })
+          .limit(1),
       ]);
       if (cancelled) return;
 
@@ -209,10 +221,23 @@ export function useRoom(roomCode: string): UseRoomResult {
             break;
           }
         }
-        for (let i = msgs.length - 1; i > lastSystemIndex; i--) {
-          if (msgs[i].type === 'emoji_update') {
-            setCanvas(msgs[i].content);
-            break;
+        // Current round's canvas snapshot: emoji_update rows are excluded from `msgs`
+        // (they can be large data URLs) and fetched separately as the single latest one.
+        // It only belongs to the current round if it landed after the latest plain
+        // system message; otherwise it is a stale snapshot from a previous turn.
+        if (emojiRes.error) {
+          setCanvas('');
+        } else {
+          const latestEmoji = ((emojiRes.data ?? []) as Message[])[0] ?? null;
+          const lastSystemCreatedAt = lastSystemIndex >= 0 ? msgs[lastSystemIndex].created_at : null;
+          if (
+            latestEmoji &&
+            lastSystemCreatedAt &&
+            new Date(latestEmoji.created_at).getTime() > new Date(lastSystemCreatedAt).getTime()
+          ) {
+            setCanvas(latestEmoji.content);
+          } else {
+            setCanvas('');
           }
         }
         // Current round's hints: the latest hints: message after the latest plain
@@ -347,10 +372,12 @@ export function useRoom(roomCode: string): UseRoomResult {
         if (playerId) void channel.track({ playerId });
         // Catch up on anything inserted between the initial load and now.
         void refetchRoom();
+        setChannel(channel);
       }
     });
 
     return () => {
+      setChannel(null);
       void supabase.removeChannel(channel);
     };
   }, [roomId, playerId, supabase, refetchRoom]);
@@ -402,6 +429,6 @@ export function useRoom(roomCode: string): UseRoomResult {
     systemFeed,
     reveal,
     reveals,
-    channel: null,
+    channel,
   };
 }

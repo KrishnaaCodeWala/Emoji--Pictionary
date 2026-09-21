@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Message, Player, PublicHints } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmojiCanvas from '@/components/EmojiCanvas';
+import CanvasView from '@/components/canvas/CanvasView';
+import type { InputMode, StrokeEvent } from '@/lib/types';
 import Chat from '@/components/Chat';
 import GuessInput from '@/components/GuessInput';
 import HintBar from './HintBar';
@@ -17,6 +19,9 @@ export interface GuesserPanelProps {
   onGuess: (guess: string) => void;
   /** increments on each near miss; show a brief "Close!" flash */
   closeFlash: number;
+  /** v4: canvas input renders a live CanvasView instead of the emoji canvas */
+  inputMode?: InputMode;
+  strokes?: StrokeEvent[];
 }
 
 export default function GuesserPanel({
@@ -27,6 +32,8 @@ export default function GuesserPanel({
   actorNickname,
   onGuess,
   closeFlash,
+  inputMode,
+  strokes,
 }: GuesserPanelProps) {
   const [showFlash, setShowFlash] = useState(false);
   const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,7 +83,7 @@ export default function GuesserPanel({
       </p>
 
       <HintBar hints={hints} />
-      <EmojiCanvas emojis={canvas} />
+      {inputMode === 'canvas' ? <CanvasView value={canvas} strokes={strokes ?? []} /> : <EmojiCanvas emojis={canvas} />}
       <Chat messages={messages} players={players} />
 
       <div className="sticky bottom-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">

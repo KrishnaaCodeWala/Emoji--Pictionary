@@ -1,10 +1,11 @@
 'use client';
 
-import type { HintKey, Prompt } from '@/lib/types';
+import type { HintKey, InputMode, Prompt, StrokeEvent } from '@/lib/types';
 import { HINT_COST, HINT_KEYS } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import EmojiCanvas from '@/components/EmojiCanvas';
 import EmojiPicker from '@/components/EmojiPicker';
+import DrawCanvas from '@/components/canvas/DrawCanvas';
 import PosterFrame from './PosterFrame';
 
 export interface ActorPanelProps {
@@ -13,6 +14,11 @@ export interface ActorPanelProps {
   revealed: HintKey[];
   onDraw: (emojis: string) => void;
   onRevealHint: (hint: HintKey) => void;
+  // ---- v4 (canvas input) ----
+  inputMode?: InputMode;
+  playerId?: string;
+  round?: number;
+  onStroke?: (s: StrokeEvent) => void;
 }
 
 const HINT_LABEL: Record<HintKey, string> = {
@@ -28,7 +34,17 @@ const KIND_LABEL: Record<Prompt['kind'], string> = {
   game: 'Game',
 };
 
-export default function ActorPanel({ prompt, canvas, revealed, onDraw, onRevealHint }: ActorPanelProps) {
+export default function ActorPanel({
+  prompt,
+  canvas,
+  revealed,
+  onDraw,
+  onRevealHint,
+  inputMode,
+  playerId,
+  round,
+  onStroke,
+}: ActorPanelProps) {
   if (!prompt) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 animate-pulse">
@@ -59,10 +75,22 @@ export default function ActorPanel({ prompt, canvas, revealed, onDraw, onRevealH
         </div>
       </div>
 
-      <p className="text-sm font-bold font-mono text-primary uppercase tracking-widest text-center mt-2 border-y-2 border-dashed border-border py-2">Act it out with emojis!</p>
+      <p className="text-sm font-bold font-mono text-primary uppercase tracking-widest text-center mt-2 border-y-2 border-dashed border-border py-2">Act it out!</p>
 
-      <EmojiCanvas emojis={canvas} />
-      <EmojiPicker value={canvas} onChange={onDraw} />
+      {inputMode === 'canvas' ? (
+        <DrawCanvas
+          value={canvas}
+          playerId={playerId ?? ''}
+          round={round ?? 0}
+          onStroke={onStroke}
+          onSnapshot={onDraw}
+        />
+      ) : (
+        <>
+          <EmojiCanvas emojis={canvas} />
+          <EmojiPicker value={canvas} onChange={onDraw} />
+        </>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {HINT_KEYS.map((key) => {

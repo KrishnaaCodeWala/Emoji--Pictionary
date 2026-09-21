@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Special_Elite, Rye } from "next/font/google";
+import { Inter, Special_Elite, Rye, Caveat } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -16,6 +16,11 @@ const specialElite = Special_Elite({
 const rye = Rye({
   weight: "400",
   variable: "--font-rye",
+  subsets: ["latin"],
+});
+
+const caveat = Caveat({
+  variable: "--font-sketch",
   subsets: ["latin"],
 });
 
@@ -36,9 +41,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${specialElite.variable} ${rye.variable} h-full antialiased`}
+      className={`${inter.variable} ${specialElite.variable} ${rye.variable} ${caveat.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans transition-colors duration-500">
+      <body
+        data-theme="studio"
+        className="min-h-full flex flex-col font-sans transition-colors duration-500"
+      >
         <div className="flex-1">{children}</div>
         <footer className="gutter py-3 text-center text-[11px] text-muted-foreground">
           Posters and cover art via{' '}

@@ -1,4 +1,5 @@
 import type { AlbumStep } from '@/lib/types';
+import { isImageContent } from '@/lib/canvasContent';
 
 export interface AlbumCardProps { step: AlbumStep; isNew?: boolean }
 
@@ -34,7 +35,16 @@ export default function AlbumCard({ step, isNew }: AlbumCardProps) {
       </div>
       <div className="mt-3">
         {step.kind === 'draw' ? (
-          <p className="break-all text-center text-4xl leading-relaxed sm:text-5xl">{step.content}</p>
+          isImageContent(step.content) ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URL snapshot, not a static asset
+            <img
+              src={step.content}
+              alt="drawing"
+              className="mx-auto max-h-64 w-full max-w-full rounded-lg border border-border object-contain"
+            />
+          ) : (
+            <p className="break-all text-center text-4xl leading-relaxed sm:text-5xl">{step.content}</p>
+          )
         ) : (
           <p className="break-words text-lg text-foreground">&ldquo;{step.content}&rdquo;</p>
         )}

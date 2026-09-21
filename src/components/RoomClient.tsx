@@ -4,21 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRoom } from '@/hooks/useRoom';
 import { useRelay } from '@/hooks/useRelay';
+import { useStrokes } from '@/hooks/useStrokes';
 import { api } from '@/lib/api';
 import { getPlayerId } from '@/lib/player';
-import { ADVANCE_GRACE_MS, DRAWER_ABSENT_MS } from '@/lib/constants';
+import { ADVANCE_GRACE_MS, DRAWER_ABSENT_MS, THEME_FOR_MODE } from '@/lib/constants';
 import type { GameMode, HintKey, Player, RoomSettings, WordRes } from '@/lib/types';
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
 import Results from '@/components/Results';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
 export default function RoomClient({ code }: { code: string }) {
   const router = useRouter();
   const {
     room, players, messages, canvas, me, isHost, isDrawer, onlineIds, loading, error,
-    hints, reveal, reveals, chains, systemFeed, refetchRoom,
+    hints, reveal, reveals, chains, systemFeed, refetchRoom, channel,
   } = useRoom(code);
 
   // Optimistic mode/settings so rapid toggles in the lobby build on each other instead of
@@ -28,6 +28,15 @@ export default function RoomClient({ code }: { code: string }) {
 
   // Always called (hooks order): internally inert unless room.mode === 'relay'.
   const relay = useRelay(code, room, me, systemFeed);
+
+  // v4: canvas input mode. In relay there is no single drawer (current_drawer_id is
+  // null while relay is playing), so useStrokes naturally accepts strokes from anyone.
+  const inputMode = room?.settings?.input ?? 'emoji';
+  const { strokes, send } = useStrokes(
+    channel,
+    room?.mode === 'relay' ? room?.relay_step ?? 0 : room?.round_number ?? 0,
+    room?.current_drawer_id ?? null,
+  );
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -232,11 +241,11 @@ export default function RoomClient({ code }: { code: string }) {
     );
   }
 
-  const isModern = room.mode === 'classic' && room.status !== 'lobby';
+  const theme = THEME_FOR_MODE[optimisticMode?.mode ?? room.mode];
 
   return (
-    <div className={cn("min-h-screen transition-colors duration-500 relative", isModern ? "theme-modern bg-background text-foreground" : "")}>
-      {!isModern && (
+    <div data-theme={theme} className="min-h-screen transition-colors duration-500 relative bg-background text-foreground">
+      {theme === 'theatre' && (
         <>
           <div className="vintage-noise" />
           <div className="vintage-vignette" />
@@ -297,6 +306,9 @@ export default function RoomClient({ code }: { code: string }) {
               onRevealHint={handleRevealHint}
               relay={room.mode === 'relay' ? relay : undefined}
               onRelayExpire={room.mode === 'relay' ? handleRelayExpire : undefined}
+              inputMode={inputMode}
+              strokes={strokes}
+              onStroke={send}
             />
           </motion.div>
         )}
