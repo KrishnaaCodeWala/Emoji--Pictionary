@@ -402,5 +402,6 @@ export function useRoom(roomCode: string): UseRoomResult {
     systemFeed,
     reveal,
     reveals,
+    channel: null,
   };
 }
