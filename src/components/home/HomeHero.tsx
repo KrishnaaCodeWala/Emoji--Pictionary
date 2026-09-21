@@ -87,9 +87,9 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={handleBlur}
-      className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background text-foreground transition-colors duration-500"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors duration-500"
     >
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden min-h-[320px]">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeMode}
