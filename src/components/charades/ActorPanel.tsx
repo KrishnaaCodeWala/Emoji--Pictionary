@@ -66,7 +66,7 @@ export default function ActorPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border-4 border-border shadow-[8px_8px_0_0_var(--color-border)] bg-surface p-4">
+    <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto rounded-xl border-4 border-border shadow-[8px_8px_0_0_var(--color-border)] bg-surface p-4">
       <div className="flex items-center gap-4">
         <PosterFrame url={prompt.poster_url} title={prompt.title} className="w-20 shrink-0 border-2 border-border shadow-[2px_2px_0_0_var(--color-border)]" />
         <div className="flex flex-1 flex-col gap-1">

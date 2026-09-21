@@ -161,7 +161,7 @@ export default function Game({
 
     return (
       <ModeTransition mode="relay">
-        <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+        <div className="gutter mx-auto flex w-full max-w-3xl flex-col flex-1 h-full min-h-0 overflow-hidden gap-3 py-3">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-lg font-bold font-display tracking-wide">
               {phase === 'album' ? 'Album' : `Step ${room.relay_step + 1} of ${players.length} · ${RELAY_PHASE_LABELS[phase]}`}
@@ -186,7 +186,7 @@ export default function Game({
   if (room.mode === 'charades') {
     return (
       <ModeTransition mode="charades">
-        <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6">
+        <div className="gutter mx-auto flex w-full max-w-3xl flex-col flex-1 h-full min-h-0 overflow-hidden gap-3 py-3">
           <RevealCard reveal={reveal ?? null} />
 
           <div className="flex items-center justify-between gap-3">
@@ -230,7 +230,7 @@ export default function Game({
 
   return (
     <ModeTransition mode="classic">
-      <div className="gutter mx-auto flex w-full max-w-3xl flex-col gap-4 py-6 pb-28 md:pb-6 theme-modern font-sans">
+      <div className="gutter mx-auto flex w-full max-w-3xl flex-col flex-1 h-full min-h-0 overflow-hidden gap-3 py-3 theme-modern font-sans">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-bold">
             Round {room.round_number} of {totalRounds}
@@ -241,9 +241,9 @@ export default function Game({
         <Scoreboard players={players} currentDrawerId={room.current_drawer_id} meId={me?.id ?? null} />
 
         {isDrawer ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-            <div className="flex flex-col gap-3">
-              <div className="rounded-xl border border-primary bg-primary/10 px-4 py-3 text-center shadow-sm">
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto md:flex-row md:overflow-hidden gap-3">
+            <div className="flex flex-col gap-3 shrink-0 md:flex-1 md:shrink md:min-h-0">
+              <div className="rounded-xl border border-primary bg-primary/10 px-4 py-2 text-center shadow-sm shrink-0">
                 <p className="text-sm text-muted-foreground">Draw:</p>
                 <p className="text-2xl font-bold text-primary">{word ?? '…'}</p>
               </div>
@@ -259,14 +259,14 @@ export default function Game({
                 <EmojiCanvas emojis={canvas} />
               )}
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 flex-1 min-h-0 md:flex-1">
               {inputMode !== 'canvas' && <EmojiPicker value={canvas} onChange={onDraw} />}
-              <Chat messages={messages} players={players} />
+              <div className="flex-1 min-h-0 md:min-h-0"><Chat messages={messages} players={players} /></div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-            <div className="flex flex-col gap-3">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden md:flex-row gap-3">
+            <div className="flex flex-col gap-3 shrink-0 md:flex-1 md:shrink md:min-h-0">
               <p className="text-center text-muted-foreground">
                 {drawer ? `${drawer.nickname} is drawing` : 'Waiting for the drawer…'}
               </p>
@@ -276,9 +276,9 @@ export default function Game({
                 <EmojiCanvas emojis={canvas} />
               )}
             </div>
-            <div className="flex flex-col gap-3">
-              <Chat messages={messages} players={players} />
-              <div className="sticky bottom-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+            <div className="flex flex-col gap-3 flex-1 min-h-0 md:flex-1">
+              <div className="flex-1 min-h-0"><Chat messages={messages} players={players} /></div>
+              <div className="shrink-0">
                 <GuessInput onSubmit={onGuess} />
               </div>
             </div>
