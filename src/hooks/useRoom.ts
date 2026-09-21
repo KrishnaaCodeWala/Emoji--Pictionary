@@ -77,6 +77,8 @@ export interface UseRoomResult {
   chains: ChainSummary[];
   /** v3 (Track B): raw system messages incl. structured ones, for useRelay to parse 'relay:' progress. */
   systemFeed: Message[];
+  /** v4 (Track C): the subscribed room channel, for broadcast (strokes). null until subscribed. */
+  channel: import('@supabase/supabase-js').RealtimeChannel | null;
 }
 
 export function useRoom(roomCode: string): UseRoomResult {

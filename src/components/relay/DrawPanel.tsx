@@ -4,6 +4,11 @@ import EmojiCanvas from '@/components/EmojiCanvas';
 import EmojiPicker from '@/components/EmojiPicker';
 
 export interface DrawPanelProps {
+  /** v4: 'canvas' renders DrawCanvas; submit sends the snapshot data URL */
+  inputMode?: import('@/lib/types').InputMode;
+  playerId?: string;
+  round?: number;
+  onStroke?: (s: import('@/lib/types').StrokeEvent) => void;
   phrase: string;
   onSubmit: (emojis: string) => void;
   submitted: boolean;

@@ -3,6 +3,9 @@ export type MessageType = 'guess' | 'emoji_update' | 'system';
 export type GameMode = 'classic' | 'charades' | 'relay';
 export type RelayPhase = 'write' | 'draw' | 'guess' | 'album';
 export type RelayStepKind = 'write' | 'draw' | 'guess';
+/** v4: how the drawer draws. Applies to classic, charades and relay draw steps. */
+export type InputMode = 'emoji' | 'canvas';
+export type ThemeName = 'studio' | 'theatre' | 'sketchbook';
 export type PromptKind = 'movie' | 'series' | 'game';
 export type HintKey = 'year' | 'genre' | 'wordCount' | 'firstLetters';
 
@@ -15,6 +18,27 @@ export interface RoomSettings {
   usedPromptIds?: string[];
   /** Relay only: seconds per phase. Defaults in constants (RELAY_TIMERS). */
   relayTimers?: { write: number; draw: number; guess: number };
+  /** v4: 'emoji' (default) or 'canvas'. */
+  input?: InputMode;
+}
+
+/**
+ * v4: one batch of freehand drawing, broadcast live over the room channel (event 'stroke').
+ * Coordinates are in logical canvas pixels (CANVAS_W x CANVAS_H).
+ */
+export interface StrokeEvent {
+  /** drawer's player id; receivers ignore strokes from anyone but current_drawer_id */
+  playerId: string;
+  /** round_number (classic/charades) or relay_step; receivers drop strokes from other rounds */
+  round: number;
+  /** stroke id so batches of the same stroke can be joined */
+  id: string;
+  tool: 'brush' | 'eraser';
+  color: string;
+  size: number;
+  points: { x: number; y: number }[];
+  /** 'fill' events carry a single point and color */
+  kind?: 'segment' | 'fill' | 'clear' | 'undo';
 }
 
 /** Row of the `rooms_public` view (no current_word). This is what clients see. */
@@ -130,7 +154,7 @@ export interface Message {
 }
 
 // ---- API contracts (all POST unless noted; JSON in/out) ----
-export interface CreateRoomReq { nickname: string }
+export interface CreateRoomReq { nickname: string; mode?: GameMode }
 export interface CreateRoomRes { roomCode: string; roomId: string; playerId: string }
 
 export interface JoinRoomReq { roomCode: string; nickname: string }
@@ -150,6 +174,7 @@ export interface WordRes {
 export interface SetModeReq { roomCode: string; playerId: string; mode: GameMode; settings?: RoomSettings }
 export interface RevealHintReq { roomCode: string; playerId: string; hint: HintKey }
 
+/** `emojis` is an emoji string, or (canvas input) a `data:image/png;base64,...` snapshot. */
 export interface DrawReq { roomCode: string; playerId: string; emojis: string }
 export interface GuessReq { roomCode: string; playerId: string; guess: string }
 export interface GuessRes {

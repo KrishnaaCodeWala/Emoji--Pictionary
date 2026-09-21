@@ -1,6 +1,6 @@
 'use client';
 import { useState, type ReactNode } from 'react';
-import type { HintKey, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic } from '@/lib/types';
+import type { HintKey, InputMode, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic, StrokeEvent } from '@/lib/types';
 import type { UseRelayResult } from '@/hooks/useRelay';
 import { ROUNDS_PER_PLAYER } from '@/lib/constants';
 import { pickWord } from '@/lib/words';
@@ -68,6 +68,12 @@ export interface GameProps {
   relay?: UseRelayResult;
   /** relay: timer expiry handler (calls /api/relay/advance) */
   onRelayExpire?: () => void;
+  // ---- v4 (canvas input) ----
+  inputMode?: InputMode;
+  /** live strokes received this round (guessers) */
+  strokes?: StrokeEvent[];
+  /** drawer: broadcast a stroke batch */
+  onStroke?: (s: StrokeEvent) => void;
 }
 
 const noop = () => {};

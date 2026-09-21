@@ -42,3 +42,17 @@ export const RELAY_DEFAULT_DRAW = '\u{1F937}';
 export const RELAY_DEFAULT_GUESS = '...';
 export const SYS_RELAY_PREFIX = 'relay:';
 export const SYS_CHAIN_PREFIX = 'chain:';
+
+// ---- v4: canvas, emoji picker, themes ----
+export const CANVAS_W = 480;
+export const CANVAS_H = 360;
+export const CANVAS_BRUSHES = [4, 10, 22] as const;
+export const CANVAS_COLORS = ['#111111', '#e11d48', '#f97316', '#eab308', '#16a34a', '#2563eb', '#7c3aed', '#ffffff'] as const;
+export const CANVAS_BG = '#ffffff';
+export const MAX_CANVAS_DATA_URL_LENGTH = 200_000;
+export const CANVAS_SNAPSHOT_DEBOUNCE_MS = 300;
+export const STROKE_BATCH_MAX_POINTS = 64;
+export const EMOJI_RECENTS_MAX = 24;
+export const HOME_CYCLE_MS = 6000;
+export const THEMES = ['studio', 'theatre', 'sketchbook'] as const;
+export const THEME_FOR_MODE = { classic: 'studio', charades: 'theatre', relay: 'sketchbook' } as const;
