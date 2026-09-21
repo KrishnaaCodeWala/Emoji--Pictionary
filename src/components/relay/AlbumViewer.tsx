@@ -77,7 +77,7 @@ export default function AlbumViewer({ album, chain, isHost, onNext, advancing, r
         })}
       </div>
 
-      {isHost && onNext && (
+      {isHost && onNext ? (
         <button
           type="button"
           disabled={advancing}
