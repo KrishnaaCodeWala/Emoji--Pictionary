@@ -105,23 +105,6 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
           </motion.div>
         </AnimatePresence>
 
-        <button
-          type="button"
-          aria-label="Previous look"
-          onClick={() => goTo(index - 1)}
-          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full border-2 border-border bg-surface/80 p-2 text-foreground shadow-[3px_3px_0_0_var(--color-border)] transition hover:bg-surface-muted sm:left-4"
-        >
-          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          aria-label="Next look"
-          onClick={() => goTo(index + 1)}
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full border-2 border-border bg-surface/80 p-2 text-foreground shadow-[3px_3px_0_0_var(--color-border)] transition hover:bg-surface-muted sm:right-4"
-        >
-          <ChevronRight className="h-5 w-5" aria-hidden="true" />
-        </button>
-
         <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
           {MODES.map((m, i) => (
             <button

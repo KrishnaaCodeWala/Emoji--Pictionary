@@ -113,25 +113,22 @@ export default function ThemeShowcase({ mode, active }: ThemeShowcaseProps) {
   return (
     <div
       data-theme={theme}
-      className="flex h-full w-full flex-col items-center justify-center gap-6 bg-background px-6 pt-10 pb-16 text-center text-foreground transition-colors"
+      className="flex h-full w-full flex-col items-center justify-center gap-2 sm:gap-4 bg-background px-6 pt-2 pb-6 text-center text-foreground transition-colors"
     >
       <div className="h-24 sm:h-28">
         {mode === 'classic' && <ClassicAnimation play={play} />}
         {mode === 'charades' && <CharadesAnimation play={play} />}
         {mode === 'relay' && <RelayAnimation play={play} />}
       </div>
-      <div className="flex flex-col gap-2">
-        <h2
-          className={
-            mode === 'relay'
-              ? 'font-sketch text-5xl font-bold tracking-wide text-primary sm:text-6xl'
-              : 'font-display text-4xl font-bold tracking-wide text-primary sm:text-5xl'
-          }
-        >
-          {copy.title}
-        </h2>
-        <p className="mx-auto max-w-xs text-sm text-muted-foreground sm:text-base">{copy.pitch}</p>
-      </div>
+      <h2
+        className={
+          mode === 'relay'
+            ? 'font-sketch text-5xl font-bold tracking-wide text-primary sm:text-6xl'
+            : 'font-display text-4xl font-bold tracking-wide text-primary sm:text-5xl'
+        }
+      >
+        {copy.title}
+      </h2>
     </div>
   );
 }
