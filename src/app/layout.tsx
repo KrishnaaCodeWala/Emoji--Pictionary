@@ -46,12 +46,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body
         data-theme="studio"
-        className="min-h-full flex flex-col font-sans transition-colors duration-500"
+        className="h-[100dvh] overflow-hidden flex flex-col font-sans transition-colors duration-500"
       >
         <header className="w-full flex justify-end p-4 absolute top-0 right-0 z-50">
           <HeaderAuth />
         </header>
-        <div className="flex-1 pt-12">{children}</div>
+        <div className="flex-1 pt-12 flex flex-col min-h-0 relative z-0">{children}</div>
         <footer className="gutter py-3 text-center text-[11px] text-muted-foreground">
           Posters and cover art via{' '}
           <a href="https://en.wikipedia.org" className="underline" target="_blank" rel="noreferrer">
