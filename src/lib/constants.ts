@@ -67,12 +67,7 @@ export const STREAK_BONUS_MAX = 3;
 export const SYS_SCORE_PREFIX = 'score:';
 /** 48 curated emojis for the avatar picker. */
 export const AVATARS = [
-  '😀','😎','🤩','🥳','😜','🤓','😇','🥸',
-  '🐶','🐱','🐻','🐼','🦊','🐸','🐧','🦄',
-  '🦁','🐯','🐮','🐷','🐙','🦋','🦖','🐲',
-  '🍕','🍔','🌮','🍩','🍦','🎂','🍣','🍜',
-  '⚽','🏀','🎸','🎮','🎲','🎭','🎨','🎯',
-  '🚀','🌈','⚡','🔥','💎','👑','🎉','🌟',
+  '🐶','🐱','🐻','🐼','🦊'
 ] as const;
 
 // ---- v5 Wave 2: Content ----
