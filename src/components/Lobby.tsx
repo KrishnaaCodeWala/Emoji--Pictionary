@@ -34,7 +34,7 @@ export default function Lobby({ room, players, me, isHost, onlineIds, onStart, s
   const settings = room.settings ?? {};
 
   return (
-    <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-8">
+    <div className="gutter mx-auto flex w-full max-w-md flex-col gap-6 py-4 h-full overflow-y-auto no-scrollbar pb-10">
       <Card vintage={true} className="flex flex-col gap-6">
         <div className="text-center font-display">
           <h1 className="text-3xl font-bold tracking-widest text-primary">LOBBY</h1>

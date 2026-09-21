@@ -8,6 +8,7 @@ import { generateResultsCard } from '@/lib/resultsCard';
 
 export interface ResultsProps {
   players: Player[]; isHost: boolean; onPlayAgain: () => void;
+  onPlayAgainSameSettings?: () => void;
   /** v2 */
   mode?: GameMode; reveals?: RevealPayload[];
   /** v3 (Track B): relay chains */
@@ -20,7 +21,7 @@ export interface ResultsProps {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function Results({ players, isHost, onPlayAgain, mode, reveals, chains, reactions, onReact, meId }: ResultsProps) {
+export default function Results({ players, isHost, onPlayAgain, onPlayAgainSameSettings, mode, reveals, chains, reactions, onReact, meId }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   const handleDownload = async () => {
@@ -179,13 +180,22 @@ export default function Results({ players, isHost, onPlayAgain, mode, reveals, c
       )}
 
       {isHost ? (
-        <button
-          type="button"
-          onClick={onPlayAgain}
-          className="w-full rounded-full bg-[var(--primary)] px-4 py-3 font-semibold text-[var(--primary-foreground)] transition hover:bg-[var(--primary-hover)]"
-        >
-          Play again
-        </button>
+        <div className="flex flex-col gap-2 mt-4">
+          <button
+            type="button"
+            onClick={onPlayAgainSameSettings}
+            className="w-full rounded-full bg-[var(--primary)] px-4 py-3 font-semibold text-[var(--primary-foreground)] transition hover:bg-[var(--primary-hover)] active:scale-95"
+          >
+            Replay with same settings
+          </button>
+          <button
+            type="button"
+            onClick={onPlayAgain}
+            className="w-full rounded-full border-2 border-[var(--primary)] bg-transparent px-4 py-3 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] active:scale-95"
+          >
+            Replay with new settings
+          </button>
+        </div>
       ) : (
         <p className="text-center text-sm text-[var(--muted-foreground)]">Waiting for host</p>
       )}

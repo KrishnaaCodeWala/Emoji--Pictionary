@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import AvatarPicker from '@/components/AvatarPicker';
 import ThemeShowcase from './ThemeShowcase';
+import QRScanner from './QRScanner';
 
 export interface HomeHeroProps {
   /** called with the mode of the panel that was visible when the user created a room */
@@ -41,6 +42,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
   const [roomCode, setRoomCode] = useState(() => (initialJoinCode ?? '').toUpperCase());
   const [avatar, setAvatarState] = useState<string>(() => getAvatar() ?? AVATARS[Math.floor(Math.random() * AVATARS.length)]);
   const [spectate, setSpectate] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement | null>(null);
 
@@ -72,6 +74,22 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
   function handleBlur(e: React.FocusEvent<HTMLElement>) {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setPaused(false);
+    }
+  }
+
+  function handleQRScan(text: string) {
+    setShowQRScanner(false);
+    let code = text;
+    try {
+      const url = new URL(text);
+      const joinParam = url.searchParams.get('join');
+      if (joinParam) code = joinParam;
+    } catch {
+      // not a url, use text directly
+    }
+    const cleaned = code.replace(/[^A-Za-z0-9]/g, '').substring(0, ROOM_CODE_LENGTH).toUpperCase();
+    if (cleaned) {
+      setRoomCode(cleaned);
     }
   }
 
@@ -188,9 +206,18 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="roomCode" className="text-sm font-medium">
-              Room code
-            </label>
+            <div className="flex justify-between items-center">
+              <label htmlFor="roomCode" className="text-sm font-medium">
+                Room code
+              </label>
+              <button 
+                type="button" 
+                onClick={() => setShowQRScanner(true)}
+                className="text-xs font-semibold uppercase tracking-wider text-primary underline decoration-dashed hover:text-primary-hover active:scale-95 transition-all flex items-center gap-1"
+              >
+                📷 Scan QR
+              </button>
+            </div>
             <Input
               id="roomCode"
               type="text"
@@ -234,6 +261,13 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
           )}
         </Card>
       </div>
+
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </section>
   );
 }

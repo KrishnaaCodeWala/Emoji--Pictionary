@@ -178,6 +178,15 @@ export default function RoomClient({ code }: { code: string }) {
     });
   };
 
+  const handlePlayAgainSameSettings = () => {
+    if (!me) return;
+    api.resetRoom({ roomCode: code, playerId: me.id })
+      .then(() => api.startRoom({ roomCode: code, playerId: me.id }))
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : 'Failed to restart room');
+      });
+  };
+
   const handleReact = (chainIndex: number, step: number, emoji: string) => {
     if (!me || !room) return;
     api.reactRelay({
@@ -435,6 +444,7 @@ export default function RoomClient({ code }: { code: string }) {
               players={players}
               isHost={isHost}
               onPlayAgain={handlePlayAgain}
+              onPlayAgainSameSettings={handlePlayAgainSameSettings}
               mode={room.mode}
               reveals={reveals}
               chains={chains}

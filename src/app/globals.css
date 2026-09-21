@@ -212,6 +212,13 @@
   --font-mono: var(--font-special-elite);
   --font-display: var(--font-rye);
   --font-sketch: var(--font-sketch);
+
+  --animate-bob: bob 3s ease-in-out infinite;
+  
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
 }
 
 .vintage-noise {
@@ -269,4 +276,15 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
