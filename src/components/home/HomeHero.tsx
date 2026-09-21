@@ -89,7 +89,7 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
       onBlur={handleBlur}
       className="relative flex flex-1 w-full flex-col min-h-0 overflow-hidden bg-background text-foreground transition-colors duration-500"
     >
-      <div className="relative shrink-0 flex flex-col justify-center min-h-[220px] md:min-h-[320px]">
+      <div className="relative flex-1 flex flex-col justify-center min-h-[160px] md:min-h-[320px]">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeMode}
@@ -138,8 +138,8 @@ export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, 
         </div>
       </div>
 
-      <div className="gutter relative z-10 mx-auto w-full max-w-md pb-8 pt-2 sm:pb-12 flex flex-col flex-1 min-h-0">
-        <Card className="flex flex-col gap-3 flex-1 min-h-0 p-4 sm:p-6">
+      <div className="gutter relative z-10 mx-auto w-full max-w-md pb-4 pt-2 sm:pb-12 flex flex-col shrink-0">
+        <Card className="flex flex-col gap-2 sm:gap-3 shrink-0 p-3 sm:p-6 shadow-xl">
           <div className="text-center shrink-0">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Creating a room starts it in {MODE_LABEL[activeMode]}

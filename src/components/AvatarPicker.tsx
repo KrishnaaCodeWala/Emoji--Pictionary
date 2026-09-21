@@ -49,7 +49,7 @@ export default function AvatarPicker({ value, onChange, className = '' }: Avatar
               role="option"
               aria-selected={value === emoji}
               onClick={() => onChange(emoji)}
-              className={`flex aspect-square w-full max-w-[2.5rem] items-center justify-center rounded-xl text-lg sm:text-xl transition-all duration-150 select-none border-2 ${
+              className={`flex aspect-square w-full max-w-[2.25rem] sm:max-w-[2.5rem] items-center justify-center rounded-lg sm:rounded-xl text-base sm:text-xl transition-all duration-150 select-none border-2 ${
                 value === emoji
                   ? 'border-primary bg-primary/10 scale-110 shadow-md'
                   : 'border-transparent bg-surface hover:border-border hover:bg-surface-muted hover:scale-105'
