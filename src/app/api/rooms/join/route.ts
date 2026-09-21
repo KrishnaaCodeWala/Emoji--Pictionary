@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     const { data: player, error: playerError } = await admin
       .from('players')
-      .insert({ room_id: room.id, nickname: nickname.trim(), turn_order: count ?? 0, avatar: safeAvatar, role, auth_uid: body.authUid })
+      .insert({ room_id: room.id, nickname: nickname.trim(), turn_order: count ?? 0, avatar: safeAvatar, role, auth_uid: (body as JoinRoomReq).authUid })
       .select()
       .single();
 

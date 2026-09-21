@@ -1,6 +1,6 @@
 'use client';
 import { useState, type ReactNode } from 'react';
-import type { HintKey, InputMode, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic, StrokeEvent } from '@/lib/types';
+import type { HintKey, InputMode, Message, Player, Prompt, PublicHints, RevealPayload, RoomPublic, StrokeEvent, ReactionEvent } from '@/lib/types';
 import type { UseRelayResult } from '@/hooks/useRelay';
 import { ROUNDS_PER_PLAYER } from '@/lib/constants';
 import { pickWord } from '@/lib/words';
@@ -152,7 +152,7 @@ export default function Game({
           isHost={isHost} 
           onNext={handleAlbumNext} 
           advancing={albumAdvancing}
-          reactions={room.mode === 'relay' && room.status === 'album' && relay.album ? reactions?.filter(r => r.chainIndex === relay.album!.chainIndex) : []}
+          reactions={room.mode === 'relay' && room.relay_phase === 'album' && relay.album ? reactions?.filter(r => r.chainIndex === relay.album!.chainIndex) : []}
           onReact={(step, emoji) => onReact && relay.album ? onReact(relay.album.chainIndex, step, emoji) : undefined}
           meId={me?.id ?? null}
         />

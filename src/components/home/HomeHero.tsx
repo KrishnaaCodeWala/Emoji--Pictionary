@@ -32,7 +32,7 @@ const panelVariants: Variants = {
   exit: (dir: number) => ({ opacity: 0, x: dir >= 0 ? -48 : 48 }),
 };
 
-export default function HomeHero({ onCreate, onJoin, initialJoinCode, pending, error }: HomeHeroProps) {
+export default function HomeHero({ onCreate, onJoin, onRejoin, initialJoinCode, pending, error }: HomeHeroProps) {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);

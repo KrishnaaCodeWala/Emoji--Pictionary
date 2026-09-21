@@ -1,7 +1,6 @@
 'use client';
 import type { ChainSummary, GameMode, Player, RevealPayload, ReactionEvent } from '@/lib/types';
 import PosterFrame from './charades/PosterFrame';
-import RevealFeed from './RevealFeed';
 import { Button } from '@/components/ui/button';
 import AlbumViewer from './relay/AlbumViewer';
 import { Download, Share } from 'lucide-react';
@@ -42,7 +41,7 @@ export default function Results({ players, isHost, onPlayAgain, mode, reveals, c
       }
 
       const dataUrl = await generateResultsCard({
-        mode,
+        mode: mode ?? 'classic',
         scoreboard: sorted,
         roomCode: window.location.pathname.split('/').pop() || '????',
         funniestChain: funniest
