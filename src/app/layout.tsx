@@ -52,13 +52,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <HeaderAuth />
         </header>
         <div className="flex-1 pt-12">{children}</div>
-        <footer className="gutter py-3 text-center text-[11px] text-muted-foreground">
-          Posters and cover art via{' '}
-          <a href="https://en.wikipedia.org" className="underline" target="_blank" rel="noreferrer">
-            Wikipedia
-          </a>
-          , used for identification only.
-        </footer>
       </body>
     </html>
   );

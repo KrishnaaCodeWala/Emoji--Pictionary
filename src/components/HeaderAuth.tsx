@@ -56,22 +56,6 @@ export default function HeaderAuth() {
   return (
     <div className="flex items-center gap-2">
       {controls}
-      <Input 
-        type="email" 
-        placeholder="Email" 
-        className="w-32 h-8 text-sm" 
-        value={email} 
-        onChange={e => setEmail(e.target.value)} 
-      />
-      <Button 
-        size="sm" 
-        onClick={() => {
-          if (!email) return;
-          signInWithEmail(email, window.location.origin).then(() => setSent(true)).catch(console.error);
-        }}
-      >
-        Sign in
-      </Button>
     </div>
   );
 }
